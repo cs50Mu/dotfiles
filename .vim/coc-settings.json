@@ -1,0 +1,16 @@
+{
+  "languageserver": {
+    "golang": {
+      "command": "gopls",
+      "rootPatterns": ["go.mod"],
+      "filetypes": ["go"]
+    }
+  },
+"suggest.noselect": false,
+"coc.preferences.formatOnSaveFiletypes":["rust"],
+// 根据官方issue，需要手动指定path
+// https://github.com/fannheyward/coc-rust-analyzer/issues/853
+"rust-analyzer.server.path": "/usr/local/bin/rust-analyzer",
+"rust-analyzer.inlayHints.enable": true,
+"python.linting.enabled":false
+}
