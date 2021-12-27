@@ -225,7 +225,8 @@ let python_highlight_all = 1
 " 如何debug a mapping:
 " https://vi.stackexchange.com/questions/7722/how-to-debug-a-mapping
 """""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
-set term=xterm-256color
+" neovim 报错，暂时禁用
+" set term=xterm-256color
 
 set splitbelow splitright
 
