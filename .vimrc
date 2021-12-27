@@ -152,15 +152,15 @@ autocmd BufReadPost *
 \   exe "normal! g`\"" |
 \ endif
 
-"新建.c,.h,.sh,.java文件，自动插入文件头 
-autocmd BufNewFile *.sh,*.php,*.py,*.go exec ":call SetTitle()" 
+"新建文件，自动插入文件头 
+autocmd BufNewFile *.sh,*.php,*.py exec ":call SetTitle()" 
 ""定义函数SetTitle，自动插入文件头 
 func! SetTitle() 
 	"如果文件类型为.sh文件 
 	if &filetype == 'sh' 
 		call setline(1, "\#!/bin/bash") 
 		call append(1, "\#########################################################################") 
-		call append(2, "\# Author: (".$USER."@domob.cn)") 
+		call append(2, "\# Author: ".$USER) 
 		call append(3, "\# Created Time: ".strftime("%Y-%m-%d %H:%M:%S"))
 		call append(4, "\# File Name: ".expand("%")) 
 		call append(5, "\# Description: ")
@@ -168,7 +168,7 @@ func! SetTitle()
 	elseif &filetype == 'php'
 		call setline(1, "<?php") 
 		call append(1, "\#########################################################################") 
-		call append(2, "\# Author: (".$USER."@domob.cn)") 
+		call append(2, "\# Author: ".$USER) 
 		call append(3, "\# Created Time: ".strftime("%Y-%m-%d %H:%M:%S"))
 		call append(4, "\# File Name: ".expand("%")) 
 		call append(5, "\# Description: ")
@@ -179,21 +179,10 @@ func! SetTitle()
 		call setline(1, "\#!/usr/bin/env python")
 		call append(1, "\#-*- coding: utf-8 -*-")
 		call append(2, "\#########################################################################")
+		call append(3, "\# Author: ".$USER) 
 		call append(4, "\# Created Time: ".strftime("%Y-%m-%d %H:%M:%S"))
-		call append(7, "\#########################################################################")
-	elseif &filetype == 'go'
-		call setline(1, "\//######################################################################")
-		call append(2, "\# Author: (".$USER."@domob.cn)") 
-		call append(3, "\# Created Time: ".strftime("%Y-%m-%d %H:%M:%S"))
-		call append(4, "\# File Name: ".expand("%")) 
-		call append(5, "\# Description: ")
-		call append(6, "\//#######################################################################")
+		call append(5, "\#########################################################################")
 	endif
-	"endif
-	"	if &filetype == 'java'
-	"		call append(line(".")+6,"public class ".expand("%"))
-	"		call append(line(".")+7,"")
-	"	endif
 	"新建文件后，自动定位到文件末尾
 	autocmd BufNewFile * normal G
 endfunc 
@@ -217,17 +206,6 @@ nnoremap <leader><space> :noh<cr>
 " rust go to defination
 au FileType rust nmap <buffer> gv :call CocAction('jumpDefinition', 'vsplit')<cr>
 au FileType rust nmap <buffer> gs :call CocAction('jumpDefinition', 'split')<cr>
-
-"settings for vim-syntastic
-"set statusline+=%#warningmsg#
-"set statusline+=%{SyntasticStatuslineFlag()}
-"set statusline+=%*
-"
-"let g:syntastic_always_populate_loc_list = 1
-"let g:syntastic_auto_loc_list = 1
-"let g:syntastic_check_on_open = 1
-"let g:syntastic_check_on_wq = 1
-"let g:syntastic_python_checkers = ['pyflakes']
 
 "settings for ale(Asynchronous Lint Engine)
 let g:ale_linters = {
