@@ -40,6 +40,11 @@ Plug 'junegunn/fzf.vim'
 " focus.nvim
 Plug 'beauwilliams/focus.nvim'
 
+Plug 'jiangmiao/auto-pairs'
+
+" Seamless navigation between tmux panes and vim splits
+Plug 'christoomey/vim-tmux-navigator'
+
 " Initialize plugin system
 call plug#end()
 
