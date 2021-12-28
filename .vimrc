@@ -19,8 +19,6 @@ Plug 'tpope/vim-surround'
 Plug 'tpope/vim-commentary'
 Plug 'tpope/vim-obsession'
 Plug 'tpope/vim-sensible'
-" 需要用release分支，但vundle不支持指定分支
-" 目前只能去插件目录下手动切换到release分支
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
 " plugin for elixir
 "Plug 'elixir-editors/vim-elixir'
@@ -38,6 +36,9 @@ Plug 'wellle/targets.vim'
 " fzf
 Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }
 Plug 'junegunn/fzf.vim'
+
+" focus.nvim
+Plug 'beauwilliams/focus.nvim'
 
 " Initialize plugin system
 call plug#end()
@@ -88,6 +89,13 @@ au FileType go nmap gx <Plug>(go-def-split)
 " fzf settings
 set rtp+=/usr/local/opt/fzf
 nnoremap ,, :GFiles<Cr>
+
+" focus.nvim
+"You must run setup() to begin using focus
+if has('nvim')
+    lua require("focus").setup()
+endif
+
 
 "set fenc=utf-8 " default fileencoding
 set fencs=utf-8,gb18030,gbk,gb2312,cp936,ucs-bom,euc-jp,
