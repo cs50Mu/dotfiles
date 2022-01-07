@@ -1,3 +1,25 @@
+// reason to add this: https://github.com/brookhong/Surfingkeys/issues/1574
+// https://github.com/brookhong/Surfingkeys/wiki/Migrate-your-settings-from-0.9.74-to-1.0
+const {
+    aceVimMap,
+    mapkey,
+    imap,
+    imapkey,
+    getClickableElements,
+    vmapkey,
+    map,
+    cmap,
+    addSearchAlias,
+    removeSearchAlias,
+    tabOpenLink,
+    readText,
+    Clipboard,
+    Front,
+    Hints,
+    Visual,
+    RUNTIME
+} = api;
+
 // change tab
 map('q', 'E');
 map('w', 'R');
@@ -21,9 +43,6 @@ map('F', 'af');
 // 切换回最近的tab
 // 参考：https://github.com/brookhong/Surfingkeys/issues/949
 map(";b", '<Ctrl-6>');
-
-// disable at some site
-unmapAllExcept([], /cs.console.aliyun.com/);
 
 // change scroll step size
 settings.scrollStepSize = 140;
