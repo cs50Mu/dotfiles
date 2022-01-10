@@ -45,6 +45,15 @@ Plug 'jiangmiao/auto-pairs'
 " Seamless navigation between tmux panes and vim splits
 Plug 'christoomey/vim-tmux-navigator'
 
+" Vim sugar for the UNIX shell commands that need it the most.
+Plug 'tpope/vim-eunuch'
+
+" Automatically create any non-existent directories before writing the buffer.
+Plug 'pbrisbin/vim-mkdir'
+
+" Make the yanked region apparent!
+Plug 'machakann/vim-highlightedyank'
+
 " Initialize plugin system
 call plug#end()
 
