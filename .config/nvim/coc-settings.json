@@ -6,9 +6,5 @@
       "filetypes": ["go"]
     }
   },
-"suggest.noselect": false,
-"coc.preferences.formatOnSaveFiletypes":["rust"],
-"rust-analyzer.server.path": "/usr/local/bin/rust-analyzer",
-"rust-analyzer.inlayHints.enable": true,
-// "python.linting.enabled":false
+  "suggest.noselect": false
 }

@@ -9,7 +9,7 @@ call plug#begin()
 
 Plug 'dense-analysis/ale'
 Plug 'hdima/python-syntax'
-Plug 'ervandew/supertab'
+" Plug 'ervandew/supertab'
 "Plug 'majutsushi/tagbar'
 Plug 'fatih/vim-go', {'do': ':GoUpdateBinaries'}
 Plug 'SirVer/ultisnips'
@@ -27,9 +27,6 @@ Plug 'tpope/vim-endwise'
 " for elixir autoformat
 "Plug 'mhinz/vim-mix-format'
 "
-" for rust
-" Plugin 'rust-lang/rust.vim'
-" Plugin 'racer-rust/vim-racer'
 
 " Vim plugin that provides additional text objects
 Plug 'wellle/targets.vim'
@@ -53,6 +50,45 @@ Plug 'pbrisbin/vim-mkdir'
 
 " Make the yanked region apparent!
 Plug 'machakann/vim-highlightedyank'
+
+" ********* rust stuff **********
+"
+" ref: https://sharksforarms.dev/posts/neovim-rust/
+"
+" Collection of common configurations for the Nvim LSP client
+Plug 'neovim/nvim-lspconfig'
+
+" Completion framework
+Plug 'hrsh7th/nvim-cmp'
+
+" LSP completion source for nvim-cmp
+Plug 'hrsh7th/cmp-nvim-lsp'
+
+" Snippet completion source for nvim-cmp
+Plug 'hrsh7th/cmp-vsnip'
+
+" Other usefull completion sources
+Plug 'hrsh7th/cmp-path'
+Plug 'hrsh7th/cmp-buffer'
+
+" See hrsh7th's other plugins for more completion sources!
+
+" To enable more of the features of rust-analyzer, such as inlay hints and more!
+Plug 'simrat39/rust-tools.nvim'
+
+" Snippet engine
+Plug 'hrsh7th/vim-vsnip'
+
+" Fuzzy finder
+" Optional
+" Plug 'nvim-lua/popup.nvim'
+" Plug 'nvim-lua/plenary.nvim'
+" Plug 'nvim-telescope/telescope.nvim'
+
+" Color scheme used in the GIFs!
+" Plug 'arcticicestudio/nord-vim'
+
+" ********* rust stuff **********
 
 " Initialize plugin system
 call plug#end()
@@ -88,17 +124,32 @@ let g:go_highlight_structs = 1
 let g:go_highlight_types = 1
 " go def 默认用guru
 let g:go_def_mode = 'gopls'
+" 如果定义是在同一个文件内，则不会跳转到新的 split 窗口里
+" 参考：https://github.com/fatih/vim-go/issues/2911
 au FileType go nmap gv <Plug>(go-def-vertical)
-au FileType go nmap gx <Plug>(go-def-split)
+au FileType go nmap gs <Plug>(go-def-split)
 
-" 配合coc.nvim
-" 暂时禁用，因为它们跟`vim-endwise`插件冲突
-" refer: https://github.com/neoclide/coc.nvim/wiki/Completion-with-sources#improve-the-completion-experience
-" Use <Tab> and <S-Tab> to navigate the completion list
-" inoremap <expr> <Tab> pumvisible() ? "\<C-n>" : "\<Tab>"
-" inoremap <expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
-" Use <cr> to confirm completion
-" inoremap <expr> <cr> pumvisible() ? "\<C-y>" : "\<C-g>u\<CR>"
+"""""""""""coc.nvim"""""""""""
+" 参考：https://octetz.com/docs/2019/2019-04-24-vim-as-a-go-ide/
+" https://github.com/neoclide/coc.nvim#example-vim-configuration
+
+" Use tab for trigger completion with characters ahead and navigate.
+" Use command ':verbose imap <tab>' to make sure tab is not mapped by other plugin.
+inoremap <silent><expr> <TAB>
+      \ pumvisible() ? "\<C-n>" :
+      \ <SID>check_back_space() ? "\<TAB>" :
+      \ coc#refresh()
+inoremap <expr><S-TAB> pumvisible() ? "\<C-p>" : "\<C-h>"
+
+function! s:check_back_space() abort
+  let col = col('.') - 1
+  return !col || getline('.')[col - 1]  =~# '\s'
+endfunction
+" 若想自动选择补全的第一个，需要在:CocConfig里设置 suggest.noselect = false
+" 更多配置，可以通过`:h coc-config-suggest` 来查看
+" 参考：https://github.com/neoclide/coc.nvim/issues/2058
+
+"""""""""""coc.nvim"""""""""""
 
 " fzf settings
 set rtp+=/usr/local/opt/fzf
@@ -174,43 +225,9 @@ autocmd BufReadPost *
 \   exe "normal! g`\"" |
 \ endif
 
-"新建文件，自动插入文件头 
-autocmd BufNewFile *.sh,*.php,*.py exec ":call SetTitle()" 
-""定义函数SetTitle，自动插入文件头 
-func! SetTitle() 
-	"如果文件类型为.sh文件 
-	if &filetype == 'sh' 
-		call setline(1, "\#!/bin/bash") 
-		call append(1, "\#########################################################################") 
-		call append(2, "\# Author: ".$USER) 
-		call append(3, "\# Created Time: ".strftime("%Y-%m-%d %H:%M:%S"))
-		call append(4, "\# File Name: ".expand("%")) 
-		call append(5, "\# Description: ")
-		call append(6, "\#########################################################################") 
-	elseif &filetype == 'php'
-		call setline(1, "<?php") 
-		call append(1, "\#########################################################################") 
-		call append(2, "\# Author: ".$USER) 
-		call append(3, "\# Created Time: ".strftime("%Y-%m-%d %H:%M:%S"))
-		call append(4, "\# File Name: ".expand("%")) 
-		call append(5, "\# Description: ")
-		call append(6, "\#########################################################################") 
-		call append(7, "") 
-		call append(8, "class ".substitute(expand("%"), '.php', '', 1)." extends ") 
-	elseif &filetype == 'python'
-		call setline(1, "\#!/usr/bin/env python")
-		call append(1, "\#-*- coding: utf-8 -*-")
-		call append(2, "\#########################################################################")
-		call append(3, "\# Author: ".$USER) 
-		call append(4, "\# Created Time: ".strftime("%Y-%m-%d %H:%M:%S"))
-		call append(5, "\#########################################################################")
-	endif
-	"新建文件后，自动定位到文件末尾
-	autocmd BufNewFile * normal G
-endfunc 
-
 "Set mapleader
-let mapleader = ";"
+" let mapleader = ";"
+let mapleader = "'"
 ""Fast reloading of the .vimrc
 map <silent> <leader>ss :source ~/.vimrc<cr>
 "Fast editing of .vimrc
@@ -222,25 +239,143 @@ au FileType go nmap <leader>aa :GoDeclsDir<cr>
 " hotkey for remove highlight
 nnoremap <leader><space> :noh<cr>
 
-
-" nmap <silent> gd <Plug>(coc-definition)
-
-" rust go to defination
-au FileType rust nmap <buffer> gv :call CocAction('jumpDefinition', 'vsplit')<cr>
-au FileType rust nmap <buffer> gs :call CocAction('jumpDefinition', 'split')<cr>
-
 "settings for ale(Asynchronous Lint Engine)
 let g:ale_linters = {
 \   'python': ['flake8'],
 \   'go': ['gofmt', 'golint', 'go build', 'gotype'],
 \}
-nmap <silent> <C-k> <Plug>(ale_previous_wrap)
-nmap <silent> <C-j> <Plug>(ale_next_wrap)
+
+" 不同的文件类型对于同样的功能使用相同的快捷键
+" 参考：https://vi.stackexchange.com/questions/10664/file-type-dependent-key-mapping
+autocmd FileType go nnoremap <buffer> <silent> g[  :ALENext<cr>
+autocmd FileType go nnoremap <buffer> <silent> [g :ALEPrevious<cr>
 " Set this in your vimrc file to disabling highlighting
 let g:ale_set_highlights = 0
 
 "settings for python-syntax
 let python_highlight_all = 1
+
+"""""""""rust config stuff"""""""""
+" Set completeopt to have a better completion experience
+" :help completeopt
+" menuone: popup even when there's only one match
+" noinsert: Do not insert text until a selection is made
+" noselect: Do not select, force user to select one from the menu
+set completeopt=menuone,noinsert,noselect
+
+" Avoid showing extra messages when using completion
+set shortmess+=c
+
+" Configure LSP through rust-tools.nvim plugin.
+" rust-tools will configure and enable certain LSP features for us.
+" See https://github.com/simrat39/rust-tools.nvim#configuration
+lua <<EOF
+local nvim_lsp = require'lspconfig'
+
+local opts = {
+    tools = { -- rust-tools options
+        autoSetHints = false,
+        hover_with_actions = true,
+        inlay_hints = {
+            show_parameter_hints = false,
+            parameter_hints_prefix = "",
+            other_hints_prefix = "",
+        },
+    },
+
+    -- all the opts to send to nvim-lspconfig
+    -- these override the defaults set by rust-tools.nvim
+    -- see https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#rust_analyzer
+    server = {
+        -- on_attach is a callback called when the language server attachs to the buffer
+        -- on_attach = on_attach,
+        settings = {
+            -- to enable rust-analyzer settings visit:
+            -- https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/generated_config.adoc
+            ["rust-analyzer"] = {
+                -- enable clippy on save
+                checkOnSave = {
+                    command = "clippy"
+                },
+            }
+        }
+    },
+}
+
+require('rust-tools').setup(opts)
+EOF
+
+" Setup Completion
+" See https://github.com/hrsh7th/nvim-cmp#basic-configuration
+lua <<EOF
+local cmp = require'cmp'
+cmp.setup({
+  -- Enable LSP snippets
+  snippet = {
+    expand = function(args)
+        vim.fn["vsnip#anonymous"](args.body)
+    end,
+  },
+  mapping = {
+    ['<C-p>'] = cmp.mapping.select_prev_item(),
+    ['<C-n>'] = cmp.mapping.select_next_item(),
+    -- Add tab support
+    ['<S-Tab>'] = cmp.mapping.select_prev_item(),
+    ['<Tab>'] = cmp.mapping.select_next_item(),
+    ['<C-d>'] = cmp.mapping.scroll_docs(-4),
+    ['<C-f>'] = cmp.mapping.scroll_docs(4),
+    ['<C-Space>'] = cmp.mapping.complete(),
+    ['<C-e>'] = cmp.mapping.close(),
+    ['<CR>'] = cmp.mapping.confirm({
+      behavior = cmp.ConfirmBehavior.Insert,
+      select = true,
+    })
+  },
+
+  -- Installed sources
+  sources = {
+    { name = 'nvim_lsp' },
+    { name = 'vsnip' },
+    { name = 'path' },
+    { name = 'buffer' },
+  },
+})
+EOF
+
+
+" Code navigation shortcuts
+autocmd FileType rs noremap <silent> <c-]> <cmd>lua vim.lsp.buf.definition()<CR>
+autocmd FileType rs noremap <silent> K     <cmd>lua vim.lsp.buf.hover()<CR>
+autocmd FileType rs noremap <silent> gD    <cmd>lua vim.lsp.buf.implementation()<CR>
+autocmd FileType rs noremap <silent> <c-k> <cmd>lua vim.lsp.buf.signature_help()<CR>
+autocmd FileType rs noremap <silent> 1gD   <cmd>lua vim.lsp.buf.type_definition()<CR>
+autocmd FileType rs noremap <silent> gr    <cmd>lua vim.lsp.buf.references()<CR>
+autocmd FileType rs noremap <silent> g0    <cmd>lua vim.lsp.buf.document_symbol()<CR>
+autocmd FileType rs noremap <silent> gW    <cmd>lua vim.lsp.buf.workspace_symbol()<CR>
+
+autocmd FileType rs noremap <silent> gd    <cmd>lua vim.lsp.buf.definition()<CR>
+autocmd FileType rs noremap <silent> gv    :vs<CR><cmd>lua vim.lsp.buf.definition()<CR>
+autocmd FileType rs noremap <silent> gs    :sp<CR><cmd>lua vim.lsp.buf.definition()<CR>
+autocmd FileType rs noremap <silent> ga    <cmd>lua vim.lsp.buf.code_action()<CR>
+
+" rename
+nnoremap <silent> <leader>lr    <cmd>lua vim.lsp.buf.rename()<CR>
+
+" Set updatetime for CursorHold
+" 300ms of no cursor movement to trigger CursorHold
+set updatetime=300
+" Show diagnostic popup on cursor hold
+autocmd CursorHold * lua vim.diagnostic.open_float(nil, { focusable = false })
+
+" Goto previous/next diagnostic warning/error
+autocmd FileType rs nnoremap <buffer> <silent> g[ <cmd>lua vim.lsp.diagnostic.goto_prev()<CR>
+autocmd FileType rs nnoremap <buffer> <silent> [g <cmd>lua vim.lsp.diagnostic.goto_next()<CR>
+
+" format on save
+autocmd BufWritePre *.rs lua vim.lsp.buf.formatting_sync(nil, 200)
+
+"""""""""rust config stuff"""""""""
+
 
 " => Splits and Tabbed Files
 " ref: https://gitlab.com/dwt1/dotfiles/-/blob/master/.config/nvim/init.vim
@@ -266,3 +401,64 @@ noremap <silent> <C-Down> :resize -3<CR>
 
 " Removes pipes | that act as seperators on splits
 set fillchars+=vert:\ 
+"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+
+
+""""""""""""""""keybinding to run rust testcase""""""""""""""""
+function! s:run_rust_tests()
+  if &modified
+    write
+  end
+  call SmartRun("cargo test --all --all-features")
+endfunction
+
+nnoremap <leader>T :call <SID>run_rust_tests()<cr>
+
+" <test-running-functions>
+  " Functions used to run tests in a terminal split and automatically closing
+  " the split if the tests are green. If they're red, jump forward to the
+  " word 'Failure'
+  function! TerminalRun(cmd)
+    execute "new"
+    call termopen(a:cmd, {
+          \ 'on_exit': function('TerminalOnExit'),
+          \ 'buf': expand('<abuf>')
+          \})
+    execute "normal i"
+  endfunction
+
+  function! TerminalOnExit(job_id, exit_code, event) dict
+    if a:exit_code == 0
+      execute "bd! " . s:test_buffer_number
+      wincmd =
+    else
+      wincmd =
+    endif
+  endfunction
+
+  function! TerminalOnTermClose(buf)
+    let s:test_buffer_number = a:buf
+  endfunction
+" </test-running-functions>
+
+function! FifoRun(cmd)
+  let pwd = getcwd()
+  execute "silent !runner --pwd " . pwd . " --cmd '" . a:cmd . "'"
+endfunction
+
+function! SmartRun(cmd)
+  silent! let output = system('runner --check')
+
+  if output == "Found at least one instance running\n"
+    call FifoRun(a:cmd)
+  else
+    call TerminalRun(a:cmd)
+  endif
+endfunction
+
+augroup neorun
+  autocmd!
+  autocmd TermClose * :call TerminalOnTermClose(0+expand('<abuf>'))
+augroup end
+""""""""""""""""keybinding to run rust testcase""""""""""""""""

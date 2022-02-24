@@ -14,14 +14,18 @@
 # Any items in the `env` entry below will be added as
 # environment variables. Some entries may override variables
 # set by alacritty itself.
-#env:
-  # TERM variable
+# env:
+#   # TERM variable
   #
   # This value is used to set the `$TERM` environment variable for
   # each instance of Alacritty. If it is not present, alacritty will
   # check the local terminfo database and use `alacritty` if it is
   # available, otherwise `xterm-256color` is used.
-  #TERM: alacritty
+  # TERM: xterm-256color
+
+# window.opacity not working in v0.9
+# https://github.com/alacritty/alacritty/issues/3641
+background_opacity: 0.8
 
 window:
   # Window dimensions (changes require restart)
@@ -45,9 +49,9 @@ window:
   #
   # Blank space added around the window in pixels. This padding is scaled
   # by DPI and the specified value is always added at both opposing sides.
-  #padding:
-  #  x: 0
-  #  y: 0
+  padding:
+   x: 5
+   y: 5
 
   # Spread additional padding evenly around the terminal content.
   #dynamic_padding: false
@@ -67,7 +71,7 @@ window:
   #
   # Window opacity as a floating point number from `0.0` to `1.0`.
   # The value `0.0` is completely transparent and `1.0` is opaque.
-  #opacity: 1.0
+  opacity: 0.5
 
   # Startup Mode (changes require restart)
   #
@@ -753,6 +757,10 @@ key_bindings:
 
   # Vi Mode
   - { key: V,  mods: Shift|Control, mode: ~Search,    action: ToggleViMode            }
+  # 修复中文输入法的问题，但这会导致在tmux和vim中删除键(delete)不起作用
+  # 目前尚无完美解决办法
+  # 参考：https://github.com/alacritty/alacritty/issues/1606
+  - { key: Back, action:  ReceiveChar}
   #- { key: Space,  mods: Shift|Control, mode: Vi|~Search, action: ScrollToBottom          }
   #- { key: Escape,                      mode: Vi|~Search, action: ClearSelection          }
   #- { key: I,                           mode: Vi|~Search, action: ToggleViMode            }
