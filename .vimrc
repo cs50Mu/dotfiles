@@ -94,6 +94,7 @@ Plug 'hrsh7th/vim-vsnip'
 call plug#end()
 
 syntax on
+filetype on
 
 " settings for vim-mix-format
 let g:mix_format_on_save = 1
@@ -344,19 +345,19 @@ EOF
 
 
 " Code navigation shortcuts
-autocmd FileType rs noremap <silent> <c-]> <cmd>lua vim.lsp.buf.definition()<CR>
-autocmd FileType rs noremap <silent> K     <cmd>lua vim.lsp.buf.hover()<CR>
-autocmd FileType rs noremap <silent> gD    <cmd>lua vim.lsp.buf.implementation()<CR>
-autocmd FileType rs noremap <silent> <c-k> <cmd>lua vim.lsp.buf.signature_help()<CR>
-autocmd FileType rs noremap <silent> 1gD   <cmd>lua vim.lsp.buf.type_definition()<CR>
-autocmd FileType rs noremap <silent> gr    <cmd>lua vim.lsp.buf.references()<CR>
-autocmd FileType rs noremap <silent> g0    <cmd>lua vim.lsp.buf.document_symbol()<CR>
-autocmd FileType rs noremap <silent> gW    <cmd>lua vim.lsp.buf.workspace_symbol()<CR>
+autocmd FileType rust noremap <silent> <c-]> <cmd>lua vim.lsp.buf.definition()<CR>
+autocmd FileType rust noremap <silent> K     <cmd>lua vim.lsp.buf.hover()<CR>
+autocmd FileType rust noremap <silent> gD    <cmd>lua vim.lsp.buf.implementation()<CR>
+autocmd FileType rust noremap <silent> <c-k> <cmd>lua vim.lsp.buf.signature_help()<CR>
+autocmd FileType rust noremap <silent> 1gD   <cmd>lua vim.lsp.buf.type_definition()<CR>
+autocmd FileType rust noremap <silent> gr    <cmd>lua vim.lsp.buf.references()<CR>
+autocmd FileType rust noremap <silent> g0    <cmd>lua vim.lsp.buf.document_symbol()<CR>
+autocmd FileType rust noremap <silent> gW    <cmd>lua vim.lsp.buf.workspace_symbol()<CR>
 
-autocmd FileType rs noremap <silent> gd    <cmd>lua vim.lsp.buf.definition()<CR>
-autocmd FileType rs noremap <silent> gv    :vs<CR><cmd>lua vim.lsp.buf.definition()<CR>
-autocmd FileType rs noremap <silent> gs    :sp<CR><cmd>lua vim.lsp.buf.definition()<CR>
-autocmd FileType rs noremap <silent> ga    <cmd>lua vim.lsp.buf.code_action()<CR>
+autocmd FileType rust nnoremap <silent> gd    <cmd>lua vim.lsp.buf.definition()<CR>
+autocmd FileType rust noremap <silent> gv    :vs<CR><cmd>lua vim.lsp.buf.definition()<CR>
+autocmd FileType rust noremap <silent> gs    :sp<CR><cmd>lua vim.lsp.buf.definition()<CR>
+autocmd FileType rust noremap <silent> ga    <cmd>lua vim.lsp.buf.code_action()<CR>
 
 " rename
 nnoremap <silent> <leader>lr    <cmd>lua vim.lsp.buf.rename()<CR>
@@ -368,8 +369,8 @@ set updatetime=300
 autocmd CursorHold * lua vim.diagnostic.open_float(nil, { focusable = false })
 
 " Goto previous/next diagnostic warning/error
-autocmd FileType rs nnoremap <buffer> <silent> g[ <cmd>lua vim.lsp.diagnostic.goto_prev()<CR>
-autocmd FileType rs nnoremap <buffer> <silent> [g <cmd>lua vim.lsp.diagnostic.goto_next()<CR>
+autocmd FileType rust nnoremap <buffer> <silent> g[ <cmd>lua vim.lsp.diagnostic.goto_prev()<CR>
+autocmd FileType rust nnoremap <buffer> <silent> [g <cmd>lua vim.lsp.diagnostic.goto_next()<CR>
 
 " format on save
 autocmd BufWritePre *.rs lua vim.lsp.buf.formatting_sync(nil, 200)

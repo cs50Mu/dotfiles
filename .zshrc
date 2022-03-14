@@ -53,7 +53,7 @@ plugins=(git autojump)
 
 # User configuration
 
-export PATH="/Users/linuxfish/.bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/linuxfish/Work/code/golang/bin"
+export PATH="/Users/linuxfish/.bin:/opt/homebrew/bin:/Users/linuxfish/.cargo/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/linuxfish/Work/code/golang/bin"
 # path for sml
 #export PATH=/usr/local/Cellar/smlnj/110.78/bin:$PATH
 # export MANPATH="/usr/local/man:$MANPATH"
@@ -63,12 +63,6 @@ export PATH="/Users/linuxfish/.bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:
 #PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
 
 source $ZSH/oh-my-zsh.sh
-
-# Initialize rbenv, MUST be put under the PATH declaration, or the ruby version will still be system version
-source ~/.profile 
-
-# Shell Integration
-source ~/.iterm2_shell_integration.`basename $SHELL`
 
 # set android sdk home for eclipse buiding system (which uses ant)
 #export ANDROID_SDK_HOME=/Users/linuxfish/Library/Android/sdk
@@ -84,7 +78,7 @@ export LANG=en_US.UTF-8
 #   export EDITOR='mvim'
 # fi
 
-export EDITOR='vim'
+export EDITOR='nvim'
 
 # erase duplicated commands
 export HISTCONTROL=erasedups

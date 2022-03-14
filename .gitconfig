@@ -1,8 +1,6 @@
 [core]
     editor = nvim
-[user]
-	email = linuxfish.exe@gmail.com
-	name = linuxfish
+
 [push]
 	default = simple
 [alias]
@@ -38,3 +36,10 @@
 
 [interactive]
     diffFilter = delta --color-only
+
+; seperate name && email for work and life
+; ref: https://stackoverflow.com/questions/34597186/use-a-different-user-email-and-user-name-for-git-config-based-upon-remote-clone
+[includeIf "gitdir:~/work/"]
+    path = .gitconfig-work
+[includeIf "gitdir:~/playground/"]
+    path = .gitconfig-play
