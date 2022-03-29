@@ -19,6 +19,7 @@ Plug 'tpope/vim-surround'
 Plug 'tpope/vim-commentary'
 Plug 'tpope/vim-obsession'
 Plug 'tpope/vim-sensible'
+Plug 'tpope/vim-vinegar'
 Plug 'neoclide/coc.nvim', {'branch': 'release'}
 " plugin for elixir
 "Plug 'elixir-editors/vim-elixir'
@@ -41,6 +42,8 @@ Plug 'jiangmiao/auto-pairs'
 
 " Seamless navigation between tmux panes and vim splits
 Plug 'christoomey/vim-tmux-navigator'
+" system-copy
+Plug 'christoomey/vim-system-copy'
 
 " Vim sugar for the UNIX shell commands that need it the most.
 Plug 'tpope/vim-eunuch'
@@ -78,6 +81,7 @@ Plug 'simrat39/rust-tools.nvim'
 
 " Snippet engine
 Plug 'hrsh7th/vim-vsnip'
+" Plug 'rust-lang/rust.vim'
 
 " Fuzzy finder
 " Optional
@@ -154,7 +158,7 @@ endfunction
 
 " fzf settings
 set rtp+=/usr/local/opt/fzf
-nnoremap ,, :GFiles<Cr>
+nnoremap ,, :Files<Cr>
 
 " focus.nvim
 "You must run setup() to begin using focus
@@ -345,10 +349,10 @@ EOF
 
 
 " Code navigation shortcuts
-autocmd FileType rust noremap <silent> <c-]> <cmd>lua vim.lsp.buf.definition()<CR>
 autocmd FileType rust noremap <silent> K     <cmd>lua vim.lsp.buf.hover()<CR>
 autocmd FileType rust noremap <silent> gD    <cmd>lua vim.lsp.buf.implementation()<CR>
-autocmd FileType rust noremap <silent> <c-k> <cmd>lua vim.lsp.buf.signature_help()<CR>
+" 与窗口管理冲突了
+" autocmd FileType rust noremap <silent> <c-k> <cmd>lua vim.lsp.buf.signature_help()<CR>
 autocmd FileType rust noremap <silent> 1gD   <cmd>lua vim.lsp.buf.type_definition()<CR>
 autocmd FileType rust noremap <silent> gr    <cmd>lua vim.lsp.buf.references()<CR>
 autocmd FileType rust noremap <silent> g0    <cmd>lua vim.lsp.buf.document_symbol()<CR>
@@ -407,6 +411,7 @@ set fillchars+=vert:\
 
 
 """"""""""""""""keybinding to run rust testcase""""""""""""""""
+" steal from https://github.com/davidpdrsn/dotfiles/blob/master/nvim/init.vim
 function! s:run_rust_tests()
   if &modified
     write

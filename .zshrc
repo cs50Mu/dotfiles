@@ -100,6 +100,10 @@ export GOPRIVATE=gitlab.luojilab.com
 # this works
 setopt HIST_IGNORE_SPACE
 
+# fzf
+# rg respects git ignore files
+export FZF_DEFAULT_COMMAND='rg --files --hidden'
+
 # # don't share command history among tabs
 # unsetopt inc_append_history
 # unsetopt share_history
