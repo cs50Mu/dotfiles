@@ -54,6 +54,10 @@ plugins=(git autojump)
 # User configuration
 
 export PATH="/Users/linuxfish/.bin:/opt/homebrew/bin:/Users/linuxfish/.cargo/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/linuxfish/Work/code/golang/bin"
+# jdk
+export PATH="/Library/Java/JavaVirtualMachines/adoptopenjdk-11.jdk/Contents/Home/bin:$PATH"
+# scala
+export PATH="/opt/homebrew/opt/scala@2.12/bin:$PATH"
 # path for sml
 #export PATH=/usr/local/Cellar/smlnj/110.78/bin:$PATH
 # export MANPATH="/usr/local/man:$MANPATH"
