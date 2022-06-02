@@ -200,7 +200,10 @@
     "w" '(hydra-window-scale/body :which-key "scale window")
     "f" '(counsel-find-file :which-key "find file")
     "g" '(magit-status :which-key "magit status")
-    "SPC" '(counsel-ibuffer :which-key "switch buffer")))
+    "d" '(dired :which-key "dired")
+    "SPC" '(counsel-ibuffer :which-key "switch buffer")
+    "bh" '(previous-buffer :which-key "switch to previous buffer")
+    ))
 
 ;; fix for "Key sequence starts with non-prefix key"
 ;; https://emacs.stackexchange.com/questions/68328/general-el-error-key-sequence-starts-with-non-prefix-key
@@ -235,6 +238,11 @@
 
   (evil-set-initial-state 'messages-buffer-mode 'normal)
   (evil-set-initial-state 'dashboard-mode 'normal))
+
+;; for folding / unfolding in evil-mode using za/zc/zm/zr
+;; https://www.reddit.com/r/emacs/comments/4h1f2d/question_how_can_i_enable_hideshow_for_all_its/
+(add-hook 'prog-mode-hook 'hs-minor-mode)
+
 
 
 ;; evil 自带的 jump 的逻辑有点怪，是以 buffer 为单位来 jump 的，
@@ -382,7 +390,23 @@
   ;; :hook (lsp-mode . lf/lsp-mode-setup)
   :init
   (setq lsp-keymap-prefix "C-c l")  ;; Or 'C-l', 's-l'
-  ;; :bind (("C-x g" . lsp-find-definition))
+  :custom
+  ;; what to use when checking on-save. "check" is default, I prefer clippy
+  (lsp-rust-analyzer-cargo-watch-command "clippy")
+  ;; 开启后 doc 多的时候会占将近一半屏幕
+  (lsp-eldoc-render-all nil)
+  ;; 在输入函数的时候不要显示其文档，否则跳来跳去有点乱
+  (lsp-signature-render-documentation nil)
+  (lsp-idle-delay 0.6)
+  ;; 暂时禁用 inlay-hints，有点卡，看起来也有点乱
+  ;; ;; enable / disable the hints as you prefer:
+  ;; (lsp-rust-analyzer-server-display-inlay-hints t)
+  ;; (lsp-rust-analyzer-display-lifetime-elision-hints-enable "skip_trivial")
+  ;; (lsp-rust-analyzer-display-chaining-hints nil)
+  ;; (lsp-rust-analyzer-display-lifetime-elision-hints-use-parameter-names nil)
+  ;; (lsp-rust-analyzer-display-closure-return-type-hints t)
+  ;; (lsp-rust-analyzer-display-parameter-hints nil)
+  ;; (lsp-rust-analyzer-display-reborrow-hints nil)
   :config
   (lsp-enable-which-key-integration t))
 
@@ -408,6 +432,10 @@
 ;; 本来想把`gd`重新绑定到 lsp 上的，死活不行。。
 (define-key go-mode-map [remap godef-jump] 'lsp-find-definition)
 
+;; for golang struct tag
+;; https://github.com/brantou/emacs-go-tag
+(use-package go-tag)
+
 
 ;; for code completion
 (use-package company
@@ -422,8 +450,8 @@
   (company-minimum-prefix-length 1)
   (company-idle-delay 0.0))
 
-(use-package company-box
-  :hook (company-mode . company-box-mode))
+;; (use-package company-box
+;;   :hook (company-mode . company-box-mode))
 
 (use-package dired
   :ensure nil
@@ -467,6 +495,69 @@
 (use-package counsel-projectile
   :config (counsel-projectile-mode))
 
+;; ;; https://github.com/lujun9972/emacs-document/blob/master/emacs-common/Smartparens%E7%94%A8%E6%B3%95%E8%AF%A6%E8%A7%A3.org
+;; (use-package smartparens-config
+;;   :ensure smartparens
+;;   :config
+;;   (progn
+;;     (show-smartparens-global-mode t)))
+
+;; (add-hook 'prog-mode-hook 'turn-on-smartparens-strict-mode)
+;; (add-hook 'markdown-mode-hook 'turn-on-smartparens-strict-mode)
+
+
+;; rust related
+(use-package rustic
+  :ensure
+  :bind (:map rustic-mode-map
+              ;; ("M-j" . lsp-ui-imenu)
+              ("M-?" . lsp-find-references)
+              ("C-c C-c l" . flycheck-list-errors)
+              ("C-c C-c a" . lsp-execute-code-action)
+              ("C-c C-c r" . lsp-rename)
+              ("C-c C-c q" . lsp-workspace-restart)
+              ("C-c C-c Q" . lsp-workspace-shutdown)
+              ("C-c C-c s" . lsp-rust-analyzer-status))
+  :config
+  ;; uncomment for less flashiness
+  ;; (setq lsp-eldoc-hook nil)
+  ;; (setq lsp-enable-symbol-highlighting nil)
+  ;; (setq lsp-signature-auto-activate nil)
+
+  ;; comment to disable rustfmt on save
+  (setq rustic-format-on-save t)
+  (add-hook 'rustic-mode-hook 'lf/rustic-mode-hook))
+
+(defun lf/rustic-mode-hook ()
+  ;; so that run C-c C-c C-r works without having to confirm, but don't try to
+  ;; save rust buffers that are not file visiting. Once
+  ;; https://github.com/brotzeit/rustic/issues/253 has been resolved this should
+  ;; no longer be necessary.
+  (when buffer-file-name
+    (setq-local buffer-save-without-query t)))
+
+
+;; 修复在 rust 中 minibuffer 里不能正确显示函数签名的问题
+;; https://emacs-china.org/t/lsp-mode-rust-go-eldoc/13686
+;; https://github.com/emacs-lsp/lsp-mode/pull/1740
+;; https://github.com/scturtle/dotfiles/blob/f1e087e247876dbae20d56f944a1e96ad6f31e0b/doom_emacs/.doom.d/config.el#L74-L85
+(cl-defmethod lsp-clients-extract-signature-on-hover (contents (_server-id (eql rust-analyzer)))
+  (-let* (((&hash "value") contents)
+          (groups (--partition-by (s-blank? it) (s-lines (s-trim value))))
+          (sig_group (if (s-equals? "```rust" (car (-third-item groups)))
+                         (-third-item groups)
+                       (car groups)))
+          (sig (--> sig_group
+                    (--drop-while (s-equals? "```rust" it) it)
+                    (--take-while (not (s-equals? "```" it)) it)
+                    (--map (s-trim it) it)
+                    (s-join " " it))))
+    (lsp--render-element (concat "```rust\n" sig "\n```"))))
+
+
+
+
+
 ;; move customization variables to a seperate file and load it
 (setq custom-file (locate-user-emacs-file "custom-vars.el"))
 (load custom-file 'noerror 'nomessage)
@@ -499,3 +590,20 @@
 
 ;; show matching parens etc..
 (show-paren-mode 1)
+
+;; make all backup / autosave files go into a directory
+;; https://stackoverflow.com/questions/151945/how-do-i-control-how-emacs-makes-backup-files
+;; https://emacs.stackexchange.com/questions/17210/how-to-place-all-auto-save-files-in-a-directory
+;; https://www.gnu.org/software/emacs/manual/html_node/elisp/Backquote.html
+(setq backup-directory-alist `(("." . "~/.emacs-saves"))
+      delete-old-versions t
+      kept-new-versions 4
+      kept-old-versions 2
+      version-control t
+      backup-by-copying t
+      auto-save-file-name-transforms
+      `((".*" "~/.emacs-saves/" t)))
+
+;; always confirm to exit emacs
+;; https://www.reddit.com/r/emacs/comments/uwk9kx/make_q_or_wq_not_killl_emacs_in_evil_mode/
+(setq confirm-kill-emacs #'yes-or-no-p)
