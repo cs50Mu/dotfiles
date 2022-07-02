@@ -55,9 +55,18 @@ plugins=(git autojump)
 
 export PATH="/Users/linuxfish/.bin:/opt/homebrew/bin:/Users/linuxfish/.cargo/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin:/Users/linuxfish/Work/code/golang/bin"
 # jdk
-export PATH="/Library/Java/JavaVirtualMachines/adoptopenjdk-11.jdk/Contents/Home/bin:$PATH"
+export PATH=/Library/Java/JavaVirtualMachines/adoptopenjdk-11.jdk/Contents/Home/bin:$PATH
 # scala
-export PATH="/opt/homebrew/opt/scala@2.12/bin:$PATH"
+export PATH=/opt/homebrew/opt/scala@2.12/bin:$PATH
+
+# lib
+export LIBRARY_PATH="$LIBRARY_PATH:$(brew --prefix)/lib"
+
+# # for EAF 
+# # https://github.com/emacs-eaf/emacs-application-framework
+# export PATH=/opt/homebrew/opt/python@3.9/libexec/bin:$PATH
+# export PATH=/Users/linuxfish/Library/Python/3.9/bin:$PATH
+
 # path for sml
 #export PATH=/usr/local/Cellar/smlnj/110.78/bin:$PATH
 # export MANPATH="/usr/local/man:$MANPATH"
@@ -144,3 +153,9 @@ alias pwd=' pwd'
 alias pc="proxychains4"
 alias gcc='/usr/local/bin/gcc-8'
 alias config='/usr/bin/git --git-dir=/Users/linuxfish/.cfg/ --work-tree=/Users/linuxfish'
+
+# pyenv
+# https://github.com/pyenv/pyenv#set-up-your-shell-environment-for-pyenv
+export PYENV_ROOT="$HOME/.pyenv"
+command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"
+eval "$(pyenv init -)"

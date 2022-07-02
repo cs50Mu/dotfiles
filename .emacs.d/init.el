@@ -200,9 +200,10 @@
     "w" '(hydra-window-scale/body :which-key "scale window")
     "f" '(counsel-find-file :which-key "find file")
     "g" '(magit-status :which-key "magit status")
-    "d" '(dired :which-key "dired")
+    "d" '(dired-jump :which-key "dired")
     "SPC" '(counsel-ibuffer :which-key "switch buffer")
     "bh" '(previous-buffer :which-key "switch to previous buffer")
+    "bl" '(next-buffer :which-key "switch to next buffer")
     ))
 
 ;; fix for "Key sequence starts with non-prefix key"
@@ -215,6 +216,9 @@
   (setq evil-want-integration t)
   (setq evil-want-keybinding nil)
   (setq evil-want-C-u-scroll t)
+  ;; search by symbol
+  ;; `-'默认不是一个 word
+  (setq evil-symbol-word-search t)
   ;; (setq evil-want-C-i-jump nil)
   :config
   (evil-mode 1)
@@ -243,6 +247,18 @@
 ;; https://www.reddit.com/r/emacs/comments/4h1f2d/question_how_can_i_enable_hideshow_for_all_its/
 (add-hook 'prog-mode-hook 'hs-minor-mode)
 
+;; 让`-'也算做一个 word，这样就可以在有`-'存在时也能正常使用cw、dw
+;; https://emacs.stackexchange.com/questions/9583/how-to-treat-underscore-as-part-of-the-word
+;; https://evil.readthedocs.io/en/latest/faq.html#underscore-is-not-a-word-character
+(add-hook 'prog-mode-hook #'(lambda () (modify-syntax-entry ?_ "w")))
+;; 不知道为啥在设置了下面这一行后，在编辑 elisp 的时候仍然不能把`-'当成一个 word
+;; 可能是需要重启 emacs，等重启的时候再看看吧
+(add-hook 'emacs-lisp-mode-hook #'(lambda () (modify-syntax-entry ?_ "w")))
+
+;; ;; https://github.com/gabesoft/evil-mc
+;; ;; https://github.com/hlissner/evil-multiedit
+;; ;; https://www.reddit.com/r/emacs/comments/iu0euj/getting_modern_multiple_cursors_in_emacs/
+;; (use-package evil-mc)
 
 
 ;; evil 自带的 jump 的逻辑有点怪，是以 buffer 为单位来 jump 的，
@@ -432,6 +448,9 @@
 ;; 本来想把`gd`重新绑定到 lsp 上的，死活不行。。
 (define-key go-mode-map [remap godef-jump] 'lsp-find-definition)
 
+;; K 来显示文档
+(define-key go-mode-map [remap godef-describe] 'lsp-describe-thing-at-point)
+
 ;; for golang struct tag
 ;; https://github.com/brantou/emacs-go-tag
 (use-package go-tag)
@@ -457,8 +476,11 @@
   :ensure nil
   :commands (dired dired-jump)
   :bind (("C-x C-j" . dired-jump))
-  ;; Mac 上的 ls 不支持
-  ;; :custom ((dired-listing-switches "-agho --group-directories-first"))
+  ;; Mac 上的 ls 不支持，需要 coreutils 的 ls
+  ;; https://emacs-china.org/t/macos-dired/21205/12
+  :custom
+  ((insert-directory-program "gls" dired-use-ls-dired t)
+   (dired-listing-switches "-agho --group-directories-first"))
   :config
   (evil-collection-define-key 'normal 'dired-mode-map
     "h" 'dired-single-up-directory
@@ -475,8 +497,13 @@
 (use-package dired-hide-dotfiles
   :hook (dired-mode . dired-hide-dotfiles-mode)
   :config
+  ;; not show info in the minibar
+  (setq dired-hide-dotfiles-verbose nil)
   (evil-collection-define-key 'normal 'dired-mode-map
     "H" 'dired-hide-dotfiles-mode))
+
+(setq insert-directory-program "gls" dired-use-ls-dired t)
+(setq dired-listing-switches "-al --group-directories-first")
 
 (use-package projectile
   :diminish projectile-mode
@@ -512,7 +539,9 @@
   :bind (:map rustic-mode-map
               ;; ("M-j" . lsp-ui-imenu)
               ("M-?" . lsp-find-references)
+              ;; ("K" . lsp-describe-thing-at-point)
               ("C-c C-c l" . flycheck-list-errors)
+              ("C-c C-c n" . flycheck-next-error)
               ("C-c C-c a" . lsp-execute-code-action)
               ("C-c C-c r" . lsp-rename)
               ("C-c C-c q" . lsp-workspace-restart)
@@ -523,6 +552,10 @@
   ;; (setq lsp-eldoc-hook nil)
   ;; (setq lsp-enable-symbol-highlighting nil)
   ;; (setq lsp-signature-auto-activate nil)
+
+  ;; evil模式下 K 绑定在 evil-lookup, 而 evil-lookup-func
+  ;; 默认是在 `woman'，做如下更改后，在 rust 里可以按 K 来显示文档
+  (setq evil-lookup-func #'lsp-describe-thing-at-point)
 
   ;; comment to disable rustfmt on save
   (setq rustic-format-on-save t)
@@ -554,8 +587,24 @@
                     (s-join " " it))))
     (lsp--render-element (concat "```rust\n" sig "\n```"))))
 
+;; https://github.com/flycheck/flycheck-rust
+;; https://www.reddit.com/r/emacs/comments/cw96wp/my_emacs26_setup_for_rust/
+(use-package flycheck-rust)
+(with-eval-after-load 'rustic-mode
+  (add-hook 'flycheck-mode-hook #'flycheck-rust-setup))
 
 
+;; js && vue
+(use-package vue-mode
+  :init
+  (add-hook 'vue-mode-hook #'lsp-deferred))
+
+(use-package js2-mode
+  :init
+  (add-hook 'js2-mode-hook #'lsp-deferred)
+  :mode
+  (("\\.js\\'" . js2-mode))
+  )
 
 
 ;; move customization variables to a seperate file and load it
@@ -607,3 +656,61 @@
 ;; always confirm to exit emacs
 ;; https://www.reddit.com/r/emacs/comments/uwk9kx/make_q_or_wq_not_killl_emacs_in_evil_mode/
 (setq confirm-kill-emacs #'yes-or-no-p)
+
+;; self defined functions
+(defun lf/google-search ()
+  "Googles a query or region if any."
+  (interactive)
+  (browse-url
+   (concat
+    "http://www.google.com/search?ie=utf-8&oe=utf-8&q="
+    (if mark-active
+        (buffer-substring (region-beginning) (region-end))
+      (read-string "Google: ")))))
+
+;; line wrapping
+;; https://stackoverflow.com/questions/950340/how-do-you-activate-line-wrapping-in-emacs
+;; 默认不 wrap，可以用 `toggle-truncate-lines'来切换
+(setq-default truncate-lines t)
+(setq truncate-partial-width-windows nil) ;; for vertically-split windows
+
+;; display time in modeline
+;; https://www.emacswiki.org/emacs/DisplayTime
+;; https://www.reddit.com/r/emacs/comments/kf3tsq/what_is_this_number_after_the_time_in_the_modeline/
+(setq display-time-default-load-average nil)
+(setq display-time-format "%H:%M")
+(display-time-mode 1)
+
+
+;; 内置输入法
+(use-package sis
+  ;; :hook
+  ;; enable the /follow context/ and /inline region/ mode for specific buffers
+  ;; (((text-mode prog-mode) . sis-context-mode)
+  ;;  ((text-mode prog-mode) . sis-inline-mode))
+
+  :config
+  ;; For MacOS
+  (sis-ism-lazyman-config
+
+   ;; English input source may be: "ABC", "US" or another one.
+   ;; "com.apple.keylayout.US"
+   "com.apple.keylayout.ABC"
+
+   ;; Other language input source: "rime", "sogou" or another one.
+   ;; "im.rime.inputmethod.Squirrel.Rime"
+   "com.sogou.inputmethod.sogou.pinyin")
+
+  ;; enable the /cursor color/ mode
+  (sis-global-cursor-color-mode t)
+  ;; enable the /respect/ mode
+  (sis-global-respect-mode t)
+  ;; enable the /context/ mode for all buffers
+  (sis-global-context-mode t)
+  ;; enable the /inline english/ mode for all buffers
+  (sis-global-inline-mode t)
+  )
+
+
+;; 如何恢复之前打开过的窗口？
+;; https://stackoverflow.com/questions/7641755/maximizing-restoring-a-window-in-emacs

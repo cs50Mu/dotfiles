@@ -46,15 +46,7 @@
                                 "type": "basic"
                             },
                             {
-                                "conditions": [
-                                    {
-                                        "bundle_identifiers": [
-                                            "^org\\.gnu\\.Emacs$"
-                                        ],
-                                        "type": "frontmost_application_if"
-                                    }
-                                ],
-                                "description": "Change caps_lock to control for Emacs.",
+                                "description": "Change caps_lock to control for all apps except iTerm.",
                                 "from": {
                                     "key_code": "caps_lock",
                                     "modifiers": {
