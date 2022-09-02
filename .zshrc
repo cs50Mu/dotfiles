@@ -49,7 +49,7 @@ ZSH_THEME="robbyrussell"
 # Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git autojump)
+plugins=(git autojump zsh-autosuggestions)
 
 # User configuration
 
@@ -74,6 +74,13 @@ export LIBRARY_PATH="$LIBRARY_PATH:$(brew --prefix)/lib"
 #export PATH=/Users/linuxfish/playground/CMU15122/cc0/bin:$PATH
 #gnu tools go first
 #PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
+
+# for cross-compile in rust
+export CC_x86_64_unknown_linux_gnu=x86_64-unknown-linux-gnu-gcc
+export CXX_x86_64_unknown_linux_gnu=x86_64-unknown-linux-gnu-g++
+export AR_x86_64_unknown_linux_gnu=x86_64-unknown-linux-gnu-ar
+export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-unknown-linux-gnu-gcc
+export TARGET_CC=x86_64-linux-gnu-gcc
 
 source $ZSH/oh-my-zsh.sh
 

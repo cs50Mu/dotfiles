@@ -44,6 +44,9 @@ map('F', 'af');
 // 参考：https://github.com/brookhong/Surfingkeys/issues/949
 map(";b", '<Ctrl-6>');
 
+// tab search
+map('t', 'T');
+
 // change scroll step size
 settings.scrollStepSize = 140;
 // disable smooth scroll

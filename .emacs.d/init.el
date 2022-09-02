@@ -42,21 +42,26 @@
 ;; enable auto pair
 (electric-pair-mode)
 
-;; disable auto pair for `<` in org-mode
+;; disable auto pair for `<' and `\[' in org-mode
 ;; since it will interface with code block
 ;; complete in org-mode
 ;; https://emacs.stackexchange.com/questions/26225/dont-pair-quotes-in-electric-pair-mode
-(add-hook 'org-mode-hook (lambda ()
-           (setq-local electric-pair-inhibit-predicate
-                   (lambda (c)
-                  (if (char-equal c ?<) t (electric-pair-default-inhibit c))))))
+(defun lf/electric-pair-inhibit-ignore ()
+  (setq-local electric-pair-inhibit-predicate
+              (lambda (c)
+                (if (or (char-equal c ?<) (char-equal c ?\[))
+                t
+                (electric-pair-default-inhibit c)))))
+(add-hook 'org-mode-hook 'lf/electric-pair-inhibit-ignore)
 
 ;; Disable line numbers for some modes
+(defun lf/disable-line-number ()
+  (display-line-numbers-mode 0))
 (dolist (mode '(org-mode-hook
-		shell-mode-hook
+                shell-mode-hook
                 eshell-mode-hook
                 term-mode-hook))
-  (add-hook mode (lambda () (display-line-numbers-mode 0))))
+  (add-hook mode 'lf/disable-line-number))
 
  
 ;; font && size
@@ -114,13 +119,18 @@
 ;; 否则 modeline 的图标会乱码
 (use-package doom-modeline
   :init (doom-modeline-mode 1)
-  :custom ((doom-modeline-height 15)))
+  :custom (
+           (doom-modeline-height 15)
+           (doom-modeline-time-icon nil)
+           ))
+
+(advice-add #'fit-window-to-buffer :before (lambda (&rest _) (redisplay t)))
 
 ;; (load-theme 'modus-vivendi t)
 
 
 (use-package ivy
-  :diminish
+  :diminish ivy-mode
   :bind (("C-s" . swiper)
          :map ivy-minibuffer-map
          ("TAB" . ivy-alt-done)	
@@ -137,33 +147,79 @@
   :config
   (ivy-mode 1))
 
-(use-package swiper)
+;; ;; 有 bug，输入法不能跟随
+;; (use-package ivy-posframe
+;;   :diminish ivy-posframe-mode
+;;   ;; The :custom keyword allows customization of package custom variables.
+;;   :custom
+;;   (ivy-posframe-height-alist
+;;    '((swiper . 15)
+;;      (t . 10)))
+;;   (ivy-posframe-display-functions-alist
+;;    '((complete-symbol . ivy-posframe-display-at-point)
+;;      (counsel-describe-function . nil)
+;;      (counsel-describe-variable . nil)
+;;      (swiper . nil)
+;;      (swiper-isearch . nil)
+;;      (t . ivy-posframe-display-at-frame-center)
+;;      )
+;;    )
+;;   :config
+;;   (ivy-posframe-mode 1)
+;;   )
 
-;; (use-package ivy-hydra)
+;; More friendly interface for ivy
+(use-package ivy-rich
+  :config
+  (setcdr (assq t ivy-format-functions-alist)
+          #'ivy-format-function-line)
+  (ivy-rich-mode 1)
+  )
 
+(use-package swiper
+  :after ivy
+  )
 
 (use-package counsel
+  :after (ivy amx)
+  :diminish counsel-mode
+  :custom
+  ;; enable fuzzy searching in ivy, but not swiper
+  ;; https://oremacs.com/2016/01/06/ivy-flx/
+  (ivy-re-builders-alist
+   '((swiper . regexp-quote)
+     ;; 让 counsel-projectile-rg 不要用 fuzzy find，否则会搜到很多无用的东西
+     ;; 它底层调用的是 counsel-rg
+     ;; https://github.com/ericdanan/counsel-projectile/issues/113
+     (counsel-rg . ivy--regex-plus)
+     (t      . ivy--regex-fuzzy))) 
   :bind (("M-x" . counsel-M-x)
          ("C-x b" . counsel-ibuffer)
          ("C-x C-f" . counsel-find-file)
+         ("C-x C-r" . counsel-recentf)
+         ("C-h v" . counsel-describe-variable)
+         ("C-h f" . counsel-describe-function)
          :map minibuffer-local-map
          ("C-r" . 'counsel-minibuffer-history))) 
-
-;; enable fuzzy searching in ivy, but not swiper
-;; https://oremacs.com/2016/01/06/ivy-flx/
-(setq ivy-re-builders-alist
-      '((swiper . regexp-quote)
-	;; 让 counsel-projectile-rg 不要用 fuzzy find，否则会搜到很多无用的东西
-	;; 它底层调用的是 counsel-rg
-	;; https://github.com/ericdanan/counsel-projectile/issues/113
-	(counsel-rg . ivy--regex-plus)
-        (t      . ivy--regex-fuzzy))) 
 
 ;; ivy 自己的 fuzzy find 的排序太烂了
 ;; 还好它在文档里提到了 flx
 ;; https://oremacs.com/swiper/#ivy--regex-fuzzy
 ;; https://github.com/lewang/flx
 (use-package flx)
+
+;; prioritizing your most-used commands in the completion list
+;; https://github.com/DarwinAwardWinner/amx
+(use-package amx
+  :after ivy
+  :custom
+  (amx-backend 'auto)
+  (amx-save-file "~/.emacs.d/amx-items")
+  (amx-history-length 50)
+  ;; (amx-show-keybindings nil)
+  :config
+  (amx-mode 1)
+  )
 
 (use-package which-key
   :init (which-key-mode)
@@ -178,6 +234,12 @@
 
 (use-package general
   :config
+  ;; use C-; to switch input source
+  (general-define-key "C-;" 'sis-switch)
+
+  (general-define-key "C-c c" 'org-capture)
+  (general-define-key "C-c a" 'org-agenda)
+
   ;; use SPC for leader key
   ;; lf is short for linuxfish
   (general-create-definer lf/leader-keys
@@ -199,8 +261,11 @@
     ;; https://github.com/abo-abo/hydra/blob/master/hydra-examples.el
     "w" '(hydra-window-scale/body :which-key "scale window")
     "f" '(counsel-find-file :which-key "find file")
+    "F" '(find-file-other-window :which-key "find file other window")
     "g" '(magit-status :which-key "magit status")
-    "d" '(dired-jump :which-key "dired")
+    ;; "d" '(dired-jump :which-key "dired")
+    ; try ranger
+    "d" '(ranger :which-key "ranger")
     "SPC" '(counsel-ibuffer :which-key "switch buffer")
     "bh" '(previous-buffer :which-key "switch to previous buffer")
     "bl" '(next-buffer :which-key "switch to next buffer")
@@ -238,6 +303,8 @@
   (evil-global-set-key 'motion "j" 'evil-next-visual-line)
   (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
 
+  (evil-global-set-key 'motion "gs" 'avy-goto-char-timer)
+
   (evil-set-undo-system 'undo-redo)
 
   (evil-set-initial-state 'messages-buffer-mode 'normal)
@@ -247,19 +314,15 @@
 ;; https://www.reddit.com/r/emacs/comments/4h1f2d/question_how_can_i_enable_hideshow_for_all_its/
 (add-hook 'prog-mode-hook 'hs-minor-mode)
 
-;; 让`-'也算做一个 word，这样就可以在有`-'存在时也能正常使用cw、dw
+;; 让`-'和`_'也算做一个 word，这样就可以在有`-'和`_'存在时也能正常使用cw、dw
 ;; https://emacs.stackexchange.com/questions/9583/how-to-treat-underscore-as-part-of-the-word
 ;; https://evil.readthedocs.io/en/latest/faq.html#underscore-is-not-a-word-character
-(add-hook 'prog-mode-hook #'(lambda () (modify-syntax-entry ?_ "w")))
-;; 不知道为啥在设置了下面这一行后，在编辑 elisp 的时候仍然不能把`-'当成一个 word
-;; 可能是需要重启 emacs，等重启的时候再看看吧
-(add-hook 'emacs-lisp-mode-hook #'(lambda () (modify-syntax-entry ?_ "w")))
-
-;; ;; https://github.com/gabesoft/evil-mc
-;; ;; https://github.com/hlissner/evil-multiedit
-;; ;; https://www.reddit.com/r/emacs/comments/iu0euj/getting_modern_multiple_cursors_in_emacs/
-;; (use-package evil-mc)
-
+(defun lf/hyphen-as-word ()
+  (modify-syntax-entry ?_ "w")
+  (modify-syntax-entry ?- "w")
+  )
+(add-hook 'prog-mode-hook #'lf/hyphen-as-word)
+(add-hook 'emacs-lisp-mode-hook #'lf/hyphen-as-word)
 
 ;; evil 自带的 jump 的逻辑有点怪，是以 buffer 为单位来 jump 的，
 ;; 并不是 location，参考：https://github.com/emacs-evil/evil/issues/684
@@ -312,6 +375,18 @@
 (use-package evil-surround
   :config
   (global-evil-surround-mode 1))
+
+;; 更强大的类似 vim 里的 f/t
+;; https://github.com/hlissner/evil-snipe
+(use-package evil-snipe
+  :config
+  (evil-snipe-mode 1)
+  (evil-snipe-override-mode 1)
+)
+
+;; https://github.com/hlissner/evil-snipe#conflicts-with-other-plugins
+(add-hook 'magit-mode-hook 'turn-off-evil-snipe-override-mode)
+
 
 (use-package hydra)
 
@@ -380,12 +455,72 @@
   (set-face-attribute 'org-checkbox nil :inherit 'fixed-pitch))
 
 (use-package org
-  :hook (org-mode . lf/org-mode-setup)
+  :hook
+  (org-mode . lf/org-mode-setup)
   ;; shortcut for evecute code block
-  :bind (("C-c r" . org-babel-execute-src-block))
-  :config
-  (setq org-ellipsis " ▾"
+  :bind (
+         ;; ("M-RET" . org-meta-return)
+         ("C-c r" . org-babel-execute-src-block)
+         :map org-mode-map
+         ;; disable these
+         ;; according to
+         ;; http://doc.norang.ca/org-mode.html#AgendaSetup
+         ("C-c [" . nil)
+         ("C-c ]" . nil)
+         ("C-c ;" . nil)
+         )
+  :custom
+  ;; Fast todo selection allows changing
+  ;; from any task todo state to any other state directly
+  (org-use-fast-todo-selection t)
+  (org-ellipsis " ▾"
 	org-pretty-entities t)
+
+  ;; 不要 split line，永远跳到新行
+  ;; https://irreal.org/blog/?p=6297
+  (org-M-RET-may-split-line '((default . nil)))
+
+  (org-directory "~/Dropbox/org")
+  (org-agenda-files '("~/Dropbox/org/task.org"))
+  ;; always no blank line when create new entry
+  ;; https://stackoverflow.com/questions/28351465/emacs-orgmode-do-not-insert-line-between-headers
+  (org-blank-before-new-entry '((heading . nil) (plain-list-item . nil)))
+  ;; ;; 调整 tag 在 agenda view 里显示的位置
+  ;; (org-agenda-tags-column (- 20 (window-body-width)))
+
+  ;; templates
+  (org-capture-templates
+        '(("t" "Tasks")
+          ("tw" "Work tasks" entry
+           (file+headline "task.org" "Work")
+           "* TODO %^{Task}\n SCHEDULED: %^t\n %a\n %?")
+          ("tp" "Personal task" entry
+           (file+headline "task.org" "折腾记录")
+           "* TODO %^{要折腾啥}\n SCHEDULED: %^t\n %a\n %?")
+          ("j" "Journal" entry
+           (file+datetree "journal.org")
+          "* %U - %^{标题}\n  %?")
+          ("i" "Ideas" entry
+           (file "idea.org")
+          "* %U - %^{标题}\n  %?")
+          ("c" "Code Snippet" entry
+           (file "snippet.org")
+          "* %?\t:%\\1:\n#+BEGIN_SRC %^{lanauage}\n%i\n#+END_SRC")
+          ))
+  (org-agenda-custom-commands
+   '(("h" "Agenda and Home-related tasks"
+      ((agenda "")
+       (tags-todo "home")
+       (alltodo "")))
+     ("o" "Agenda and Office-related tasks"
+      ((agenda "")
+       (tags-todo "work")
+       (tags "office")))))
+
+  ;; ;; not display DONE task in agenda view
+  ;; ;; https://stackoverflow.com/questions/8281604/remove-done-tasks-from-agenda-view
+  ;; (org-agenda-skip-function-global '(org-agenda-skip-entry-if 'todo 'done))
+  :config
   (lf/org-font-setup))
 
 ;; code block autocomplete, eg, use `<el`
@@ -394,12 +529,28 @@
   (require 'org-tempo)
 
   (add-to-list 'org-structure-template-alist '("sh" . "src shell"))
+  (add-to-list 'org-structure-template-alist '("org" . "src org"))
   (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
   (add-to-list 'org-structure-template-alist '("py" . "src python")))
+
+;; languages enabled for evaluation
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '(
+   (python . t)
+   (emacs-lisp . t)
+   (shell . t)
+   ))
 
 ;; no confirm for babel-evaluate
 (setq org-confirm-babel-evaluate nil)
 
+;; allow use j k in `org-agenda'
+(defun lf/org-agenda-jk ()
+  (define-key org-agenda-mode-map "j" 'evil-next-line)
+  (define-key org-agenda-mode-map "k" 'evil-previous-line)
+  )
+(add-hook 'org-agenda-mode-hook #'lf/org-agenda-jk)
 
 (use-package lsp-mode
   :commands (lsp lsp-deferred)
@@ -459,8 +610,7 @@
 ;; for code completion
 (use-package company
   :after lsp-mode
-  ;; 不知为啥在 emacs-lisp-mode 里不生效
-  :hook ((lsp-mode emacs-lisp-mode) . company-mode)
+  :hook (lsp-mode . company-mode)
   :bind (:map company-active-map
          ("<tab>" . company-complete-selection))
         (:map lsp-mode-map
@@ -469,8 +619,39 @@
   (company-minimum-prefix-length 1)
   (company-idle-delay 0.0))
 
-;; (use-package company-box
-;;   :hook (company-mode . company-box-mode))
+
+;; enable autocomplete for emacs lisp
+;; only enable fuzzy matching for elisp
+;; because fuzzy match could not work properly with goang and rust
+(defun lf/enable-complete-elisp()
+  (company-mode)
+  (company-fuzzy-mode)
+  )
+(add-hook 'emacs-lisp-mode-hook #'lf/enable-complete-elisp)
+
+;; for fuzzy match
+;; https://github.com/jcs-elpa/company-fuzzy
+(use-package company-fuzzy
+  :after
+  company
+  :custom
+  ((company-fuzzy-sorting-backend 'flx)
+   ;; https://github.com/jcs-elpa/company-fuzzy/pull/19
+   (company-fuzzy-passthrough-backends '(company-capf))
+   (company-fuzzy-prefix-on-top nil)
+   (company-fuzzy-trigger-symbols '("." "->" "<" "\"" "'" "@"))
+   )
+  )
+
+;; ;; 需要保证`company-backends' 只有 company-fuzzy-all-other-backends 一个才行
+;; ;; https://github.com/jcs-elpa/company-fuzzy#-why-is-company-fuzzy-not-working
+;; ;; https://github.com/jcs-elpa/company-fuzzy/issues/2
+;; ;; 貌似只有启动 lsp mode 的情况下 company-backends 才会多出一个 `company-capf'
+;; ;; 而 elisp 补全不需要启动 lsp，所以先注释掉
+;; (defun lf/set-company-backends ()
+;;   (setq-local company-backends '(company-fuzzy-all-other-backends))
+;;   )
+;; (add-hook 'company-fuzzy-mode-hook #'lf/set-company-backends)
 
 (use-package dired
   :ensure nil
@@ -505,6 +686,13 @@
 (setq insert-directory-program "gls" dired-use-ls-dired t)
 (setq dired-listing-switches "-al --group-directories-first")
 
+;; try ranger
+(use-package ranger
+  :config
+  (setq ranger-preview-file nil))
+;; set ranger as the default directory manager
+(ranger-override-dired-mode t)
+
 (use-package projectile
   :diminish projectile-mode
   :config (projectile-mode)
@@ -516,8 +704,30 @@
     (setq projectile-project-search-path '(("~/work/gitlab.luojilab.com" . 3))))
   (setq projectile-switch-project-action #'projectile-dired))
 
-;; ;; required by projectile-ripgrep
-;; (use-package rg)
+;; use rg to search everywhere
+(use-package rg
+  :config
+  ;; https://www.youtube.com/watch?v=4qLD4oHOrlc
+  (rg-define-search lf/grep-vc-or-dir
+    :query ask
+    :format regexp
+    :files "everything"
+    :dir (let ((vc (vc-root-dir)))
+           (if vc
+               vc
+             default-directory
+             )
+           )
+    :confirm prefix
+    :flags ("--hidden -g !.git")
+    )
+
+  :bind
+  (
+   ;; 在当前目录或者当前项目根目录下搜索
+   ("M-s g" . lf/grep-vc-or-dir)
+   )
+  )
 
 (use-package counsel-projectile
   :config (counsel-projectile-mode))
@@ -557,9 +767,16 @@
   ;; 默认是在 `woman'，做如下更改后，在 rust 里可以按 K 来显示文档
   (setq evil-lookup-func #'lsp-describe-thing-at-point)
 
-  ;; comment to disable rustfmt on save
-  (setq rustic-format-on-save t)
-  (add-hook 'rustic-mode-hook 'lf/rustic-mode-hook))
+  ;; 有时候发现 save 后 format 不起作用， rustic 实际上依赖 rust-mode
+  ;; 发现手动切换一下 rust-mode 后再 save 就好了。。
+  ;; 参考：https://github.com/brotzeit/rustic/issues/343
+  ;; 若实在不行，可以`M-x'在命令行执行`rustic-format-buffer'先顶一下
+  ;; (20220805) 新发现，按`:w'是可以 format 的，`:wa' 不行
+  ;; 所以看起来不是 rustic 的问题（实测 `:wa' 貌似并没有触发 save file）
+  ;; 提了个issue：https://github.com/brotzeit/rustic/issues/424
+  (setq rustic-format-trigger 'on-save)
+  ;; (add-hook 'rustic-mode-hook 'lf/rustic-mode-hook)
+  (add-hook 'rustic-mode-hook 'rustic-mode-auto-save-hook))
 
 (defun lf/rustic-mode-hook ()
   ;; so that run C-c C-c C-r works without having to confirm, but don't try to
@@ -568,6 +785,12 @@
   ;; no longer be necessary.
   (when buffer-file-name
     (setq-local buffer-save-without-query t)))
+
+;; https://github.com/brotzeit/rustic#rustfmt
+(defun rustic-mode-auto-save-hook ()
+  "Enable auto-saving in rustic-mode buffers."
+  (when buffer-file-name
+    (setq-local compilation-ask-about-save nil)))
 
 
 ;; 修复在 rust 中 minibuffer 里不能正确显示函数签名的问题
@@ -668,11 +891,15 @@
         (buffer-substring (region-beginning) (region-end))
       (read-string "Google: ")))))
 
-;; line wrapping
-;; https://stackoverflow.com/questions/950340/how-do-you-activate-line-wrapping-in-emacs
-;; 默认不 wrap，可以用 `toggle-truncate-lines'来切换
-(setq-default truncate-lines t)
-(setq truncate-partial-width-windows nil) ;; for vertically-split windows
+;; ;; line wrapping
+;; ;; https://stackoverflow.com/questions/950340/how-do-you-activate-line-wrapping-in-emacs
+;; ;; 默认不 wrap，可以用 `toggle-truncate-lines'来切换
+;; (setq-default truncate-lines t)
+;; (setq truncate-partial-width-windows nil) ;; for vertically-split windows
+
+;; 还是折行吧，不折行太难受了
+;; 上面的配置貌似也不起作用。。
+(setq-default truncate-lines nil)
 
 ;; display time in modeline
 ;; https://www.emacswiki.org/emacs/DisplayTime
@@ -711,6 +938,74 @@
   (sis-global-inline-mode t)
   )
 
+;; 拼音按首字母搜索
+;; https://github.com/laishulu/evil-pinyin
+(use-package evil-pinyin
+  :init
+  (setq-default evil-pinyin-scheme 'simplified-xiaohe-all)
+  (setq-default evil-pinyin-with-search-rule 'custom)
+
+  :config
+  ;; 作用是 / 会被映射成 evil-ex-search-forward，不然的话会是 evil-search-forward
+  ;; 这个插件貌似只支持使用 evil-ex-search-forward
+  ;; 参考：https://emacs-china.org/t/evil-search-pinyin/13455/40
+  (evil-select-search-module 'evil-search-module 'evil-search)
+  (global-evil-pinyin-mode))
+
+;; https://github.com/abo-abo/avy
+;; Avy allows to use the search mechanic to
+;; efficiently move to another place **within the visible area.**
+;; https://www.youtube.com/watch?v=zar4GsOBU0g&list=PLhXZp00uXBk4np17N39WvB80zgxlZfVwj&index=7
+;; 只能在当前屏幕可见区域内移动，不能替代 /
+;; 在 evil 的配置里把 `gs' 绑定到 avy-goto-char-timer 上了
+(use-package avy)
+
+(use-package evil-mc
+  :config
+  (global-evil-mc-mode  1))
+
+;; evil-mc
+(evil-define-key '(normal visual) 'global
+  "gzm" #'evil-mc-make-all-cursors
+  "gzu" #'evil-mc-undo-all-cursors
+  "gzI" #'evil-mc-make-cursor-in-visual-selection-beg
+  "gzA" #'evil-mc-make-cursor-in-visual-selection-end
+  "gzn" #'evil-mc-make-and-goto-next-cursor
+  "gzp" #'evil-mc-make-and-goto-prev-cursor
+  "gzN" #'evil-mc-make-and-goto-last-cursor
+  "gzP" #'evil-mc-make-and-goto-first-cursor)
+;; `C-n' / `C-p' 用于在 cursor 之间移动
+;; `M-n' / `M-p' 用于取消掉不想要的 cursor
+(with-eval-after-load 'evil-mc
+  (evil-define-minor-mode-key '(normal visual) evil-mc-mode
+    (kbd "C-n") #'evil-mc-make-and-goto-next-cursor
+    (kbd "M-n") #'evil-mc-skip-and-goto-next-cursor
+    (kbd "C-p") #'evil-mc-make-and-goto-prev-cursor)
+    (kbd "M-p") #'evil-mc-skip-and-goto-prev-cursor)
+
+
+;; org 里 `M-<return>' 被绑定到 `org-ctrl-c-ret'
+;; 我想绑定到 `org-meta-return'，折腾半天不行，后来发现
+;; 是 evil mode 的问题，需要如下设置才行
+;; https://github.com/noctuid/evil-guide#preventing-certain-keys-from-being-overridden
+(general-override-mode)
+(general-def 'normal 'override "M-<return>" 'org-meta-return)
+
+;; org-roam
+(use-package org-roam
+  :custom
+  (org-roam-directory (file-truename "~/Dropbox/org/notes"))
+  :bind
+  (
+   ("C-c n l" . org-roam-buffer-toggle)
+   ("C-c n f" . org-roam-node-find)
+   ("C-c n g" . org-roam-graph)
+   ("C-c n i" . org-roam-node-insert)
+   ("C-c n c" . org-roam-capture)
+   )
+  :config
+  (org-roam-db-autosync-mode)
+  )
 
 ;; 如何恢复之前打开过的窗口？
 ;; https://stackoverflow.com/questions/7641755/maximizing-restoring-a-window-in-emacs
