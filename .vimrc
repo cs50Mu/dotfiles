@@ -54,6 +54,9 @@ Plug 'pbrisbin/vim-mkdir'
 " Make the yanked region apparent!
 Plug 'machakann/vim-highlightedyank'
 
+" 让fish shell script，比如config.fish 有语法高亮
+Plug 'khaveesh/vim-fish-syntax'
+
 " ********* rust stuff **********
 "
 " ref: https://sharksforarms.dev/posts/neovim-rust/
