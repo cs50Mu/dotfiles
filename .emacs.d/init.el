@@ -210,6 +210,7 @@
 
 ;; prioritizing your most-used commands in the completion list
 ;; https://github.com/DarwinAwardWinner/amx
+;; 看到 Prot 在一个视频中说他已经换成 prescient.el 了，目前用着这个还好，先不换了 
 (use-package amx
   :after ivy
   :custom
@@ -374,6 +375,13 @@
 
 (use-package evil-commentary
   :config (evil-commentary-mode))
+
+;; 在 ivy-occur 里不要启用 evil-commentary
+;; 因为我想用 gc 来开启 ivy-occur 里的 ivy-calling 模式
+(defun lf/disable-evil-commentary ()
+  (evil-commentary-mode -1)
+  )
+(add-hook 'ivy-occur-grep-mode-hook #'lf/disable-evil-commentary)
 
 ;; https://github.com/emacs-evil/evil-surround
 (use-package evil-surround
@@ -1028,6 +1036,23 @@
   :config
   (winner-mode)
   )
+
+(use-package vterm
+  :custom
+  (
+   (vterm-max-scrollback 10000)
+   )
+  )
+
+;; irc
+(setq erc-server "irc.libera.chat"
+      erc-nick "linuxfish"    
+      erc-user-full-name "linuxfish"  
+      erc-track-shorten-start 8
+      erc-autojoin-channels-alist '(("irc.libera.chat" "#systemcrafters" "#emacs"))
+      erc-kill-buffer-on-part t
+            erc-auto-query 'bury)
+
 
 ;; 如何恢复之前打开过的窗口？
 ;; https://stackoverflow.com/questions/7641755/maximizing-restoring-a-window-in-emacs

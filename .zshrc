@@ -82,6 +82,11 @@ export AR_x86_64_unknown_linux_gnu=x86_64-unknown-linux-gnu-ar
 export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-unknown-linux-gnu-gcc
 export TARGET_CC=x86_64-linux-gnu-gcc
 
+# homebrew 国内镜像
+# https://mirrors.ustc.edu.cn/help/homebrew-bottles.html
+export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.ustc.edu.cn/homebrew-core.git"
+export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles"
+
 source $ZSH/oh-my-zsh.sh
 
 # set android sdk home for eclipse buiding system (which uses ant)
