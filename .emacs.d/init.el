@@ -53,6 +53,13 @@
                 t
                 (electric-pair-default-inhibit c)))))
 (add-hook 'org-mode-hook 'lf/electric-pair-inhibit-ignore)
+(defun lf/org-insert-state ()
+  (evil-define-key 'insert org-mode-map (kbd "M-l")  #'org-demote-subtree)
+  (evil-define-key 'insert org-mode-map (kbd "M-h")  #'org-promote-subtree)
+  (evil-define-key 'insert org-mode-map (kbd "M-j")  #'org-metadown)
+  (evil-define-key 'insert org-mode-map (kbd "M-k")  #'org-metaup)
+  )
+(add-hook 'org-mode-hook #'lf/org-insert-state)
 
 ;; Disable line numbers for some modes
 (defun lf/disable-line-number ()
@@ -273,12 +280,20 @@
     "SPC" '(counsel-ibuffer :which-key "switch buffer")
     "bh" '(previous-buffer :which-key "switch to previous buffer")
     "bl" '(next-buffer :which-key "switch to next buffer")
-    ))
+    )
+  )
 
 ;; fix for "Key sequence starts with non-prefix key"
 ;; https://emacs.stackexchange.com/questions/68328/general-el-error-key-sequence-starts-with-non-prefix-key
 (general-auto-unbind-keys)
 
+
+;; always focus to new window when split window
+;; https://emacs.stackexchange.com/questions/21770/automatically-switch-focus-to-new-window
+(defadvice evil-window-split (after split-window-after activate)
+  (other-window 1))
+(defadvice evil-window-vsplit (after vsplit-window-after activate)
+  (other-window 1))
 
 ;; 可以用 `C-z` 来 toggle evil mode
 (use-package evil
@@ -540,6 +555,7 @@
   ;; This is needed as of Org 9.2
   (require 'org-tempo)
 
+  (add-to-list 'org-structure-template-alist '("api" . "src restclient"))
   (add-to-list 'org-structure-template-alist '("sh" . "src shell"))
   (add-to-list 'org-structure-template-alist '("org" . "src org"))
   (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
@@ -552,6 +568,7 @@
    (python . t)
    (emacs-lisp . t)
    (shell . t)
+   (restclient . t)
    ))
 
 ;; no confirm for babel-evaluate
@@ -744,15 +761,20 @@
 (use-package counsel-projectile
   :config (counsel-projectile-mode))
 
-;; ;; https://github.com/lujun9972/emacs-document/blob/master/emacs-common/Smartparens%E7%94%A8%E6%B3%95%E8%AF%A6%E8%A7%A3.org
-;; (use-package smartparens-config
-;;   :ensure smartparens
-;;   :config
-;;   (progn
-;;     (show-smartparens-global-mode t)))
+;; 自定义了 find-file 的行为, 让它直接在新的窗口打开新的文件, 一步到位
+;; find file in other window vertically
+(defun lf/counsel-projectile-find-file-v (&optional arg dwim)
+  (interactive "P")
+  (evil-window-vsplit)
+  (counsel-projectile-find-file arg dwim)
+  )
 
-;; (add-hook 'prog-mode-hook 'turn-on-smartparens-strict-mode)
-;; (add-hook 'markdown-mode-hook 'turn-on-smartparens-strict-mode)
+;; find file in other window horizontally
+(defun lf/counsel-projectile-find-file-s (&optional arg dwim)
+  (interactive "P")
+  (evil-window-split)
+  (counsel-projectile-find-file arg dwim)
+  )
 
 
 ;; rust related
@@ -950,19 +972,19 @@
   (sis-global-inline-mode t)
   )
 
-;; 拼音按首字母搜索
-;; https://github.com/laishulu/evil-pinyin
-(use-package evil-pinyin
-  :init
-  (setq-default evil-pinyin-scheme 'simplified-xiaohe-all)
-  (setq-default evil-pinyin-with-search-rule 'custom)
+;; ;; 拼音按首字母搜索
+;; ;; https://github.com/laishulu/evil-pinyin
+;; (use-package evil-pinyin
+;;   :init
+;;   (setq-default evil-pinyin-scheme 'simplified-xiaohe-all)
+;;   (setq-default evil-pinyin-with-search-rule 'custom)
 
-  :config
-  ;; 作用是 / 会被映射成 evil-ex-search-forward，不然的话会是 evil-search-forward
-  ;; 这个插件貌似只支持使用 evil-ex-search-forward
-  ;; 参考：https://emacs-china.org/t/evil-search-pinyin/13455/40
-  (evil-select-search-module 'evil-search-module 'evil-search)
-  (global-evil-pinyin-mode))
+;;   :config
+;;   ;; 作用是 / 会被映射成 evil-ex-search-forward，不然的话会是 evil-search-forward
+;;   ;; 这个插件貌似只支持使用 evil-ex-search-forward
+;;   ;; 参考：https://emacs-china.org/t/evil-search-pinyin/13455/40
+;;   (evil-select-search-module 'evil-search-module 'evil-search)
+;;   (global-evil-pinyin-mode))
 
 ;; https://github.com/abo-abo/avy
 ;; Avy allows to use the search mechanic to
@@ -1009,6 +1031,26 @@
 ;; I already binded horizontal split to `SPC s'
 (general-def '(normal visual) 'override "SPC w s" '(hydra-window-scale/body :which-key "scale window"))
 
+;; 看来这个办法是万能的, 任何通过正常方式没法 bind 的, 用这种方式都能成功
+;; 没有以下代码之前, 这些 keybinding 在一些特殊的 buffer 里不起作用, 比如\
+;; Info 或者 help 里.
+(general-def '(normal visual) 'override
+  "SPC s" '(evil-window-split :which-key "split window horizontally")
+  "SPC v" '(evil-window-vsplit :which-key "split window vertically")
+  "SPC h" '(evil-window-left :which-key "move cursor to left")
+  "SPC l" '(evil-window-right :which-key "move cursor to right")
+  "SPC j" '(evil-window-down :which-key "move cursor to down")
+  "SPC k" '(evil-window-up :which-key "move cursor to up")
+  "SPC c" '(evil-window-delete :which-key "close window")
+  "SPC o" '(delete-other-windows :which-key "close other windows"))
+
+;; 重新映射 find-file
+;; TODO: 需要想个办法来表达 horizontal split, 又不想增加按键数量
+(general-def '(normal visual) 'override
+  "SPC pfv" '(lf/counsel-projectile-find-file-v :which-key "find file in project vertically")
+  "SPC pfs" '(lf/counsel-projectile-find-file-s :which-key "find file in project horizontally")
+  )
+
 ;; org-roam
 (use-package org-roam
   :custom
@@ -1044,7 +1086,47 @@
    )
   )
 
+
+;; https://github.com/suonlight/multi-vterm
+(use-package multi-vterm
+  :config
+  (defun lf/vterm-evil ()
+    (setq-local evil-insert-state-cursor 'box)
+    (evil-insert-state)
+    )
+
+  (add-hook 'vterm-mode-hook #'lf/vterm-evil)
+  (define-key vterm-mode-map [return]                      #'vterm-send-return)
+
+  (setq vterm-keymap-exceptions nil)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-e")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-f")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-a")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-v")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-b")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-w")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-u")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-d")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-n")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-m")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-p")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-j")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-k")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-r")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-t")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-g")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-c")      #'vterm--self-insert)
+  (evil-define-key 'insert vterm-mode-map (kbd "C-SPC")    #'vterm--self-insert)
+  (evil-define-key 'normal vterm-mode-map (kbd "C-d")      #'vterm--self-insert)
+  (evil-define-key 'normal vterm-mode-map (kbd ",c")       #'multi-vterm)
+  (evil-define-key 'normal vterm-mode-map (kbd ",n")       #'multi-vterm-next)
+  (evil-define-key 'normal vterm-mode-map (kbd ",p")       #'multi-vterm-prev)
+  (evil-define-key 'normal vterm-mode-map (kbd "i")        #'evil-insert-resume)
+  (evil-define-key 'normal vterm-mode-map (kbd "o")        #'evil-insert-resume)
+  (evil-define-key 'normal vterm-mode-map (kbd "<return>") #'evil-insert-resume))
+
 ;; irc
+;; 不知为啥不起作用, 配置了还是不能自动登录
 (setq erc-server "irc.libera.chat"
       erc-nick "linuxfish"    
       erc-user-full-name "linuxfish"  
@@ -1053,6 +1135,43 @@
       erc-kill-buffer-on-part t
             erc-auto-query 'bury)
 
+(use-package posframe)
+
+;; disable evil-mode
+;; https://github.com/lorniu/go-translate/issues/6
+(defun lf/disable-evil ()
+  (turn-off-evil-mode)
+  ;; 绑了两个 key 来移动行
+  ;; 另外也可以用 emacs 的 key 来滚动屏幕:
+  ;; C-v 来向下移动; M-v 来向上移动
+  (general-define-key "C-j" #'next-line)
+  (general-define-key "C-k" #'previous-line)
+  )
+
+(use-package go-translate
+  :bind
+  ("C-c t" . gts-do-translate)
+  :config
+  (setq gts-translate-list '(("en" "zh")))
+  (setq gts-default-translator
+        (gts-translator
+         :picker (gts-noprompt-picker)
+         :engines (list (gts-bing-engine) (gts-google-engine))
+         :render
+         ;; (gts-buffer-render)
+         (gts-posframe-pop-render)
+         ))
+  )
+
+(add-hook 'gts-after-buffer-render-hook #'lf/disable-evil)
+(add-hook 'gts-after-buffer-multiple-render-hook #'lf/disable-evil)
+
+;; make http request in org
+(use-package restclient)
+(use-package ob-restclient
+  :after
+  restclient
+  )
 
 ;; 如何恢复之前打开过的窗口？
 ;; https://stackoverflow.com/questions/7641755/maximizing-restoring-a-window-in-emacs
