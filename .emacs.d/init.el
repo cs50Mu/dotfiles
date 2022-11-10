@@ -1,6 +1,9 @@
 ;; disable welcome msg
 (setq inhibit-startup-message t)
 
+;; disable warnings of native comp
+(setq native-comp-async-report-warnings-errors nil)
+
 (defvar lf/default-font-size 180)
 
 ;;; I prefer cmd key for meta
@@ -41,25 +44,6 @@
 
 ;; enable auto pair
 (electric-pair-mode)
-
-;; disable auto pair for `<' and `\[' in org-mode
-;; since it will interface with code block
-;; complete in org-mode
-;; https://emacs.stackexchange.com/questions/26225/dont-pair-quotes-in-electric-pair-mode
-(defun lf/electric-pair-inhibit-ignore ()
-  (setq-local electric-pair-inhibit-predicate
-              (lambda (c)
-                (if (or (char-equal c ?<) (char-equal c ?\[))
-                t
-                (electric-pair-default-inhibit c)))))
-(add-hook 'org-mode-hook 'lf/electric-pair-inhibit-ignore)
-(defun lf/org-insert-state ()
-  (evil-define-key 'insert org-mode-map (kbd "M-l")  #'org-demote-subtree)
-  (evil-define-key 'insert org-mode-map (kbd "M-h")  #'org-promote-subtree)
-  (evil-define-key 'insert org-mode-map (kbd "M-j")  #'org-metadown)
-  (evil-define-key 'insert org-mode-map (kbd "M-k")  #'org-metaup)
-  )
-(add-hook 'org-mode-hook #'lf/org-insert-state)
 
 ;; Disable line numbers for some modes
 (defun lf/disable-line-number ()
@@ -102,17 +86,19 @@
 (require 'use-package)
 (setq use-package-always-ensure t)
 
-;; https://github.com/purcell/exec-path-from-shell
-(use-package exec-path-from-shell)
+;; 理论上, 用 emacs-plus 就没有必要使用以下配置了
 
-;; This sets $MANPATH, $PATH and exec-path from your shell, but only
-;; when executed in a GUI frame on OS X and Linux.
-(when (memq window-system '(mac ns x))
-  (exec-path-from-shell-initialize))
+;; ;; https://github.com/purcell/exec-path-from-shell
+;; (use-package exec-path-from-shell)
 
-;; If you launch Emacs as a daemon from systemd or similar
-(when (daemonp)
-  (exec-path-from-shell-initialize))
+;; ;; This sets $MANPATH, $PATH and exec-path from your shell, but only
+;; ;; when executed in a GUI frame on OS X and Linux.
+;; (when (memq window-system '(mac ns x))
+;;   (exec-path-from-shell-initialize))
+
+;; ;; If you launch Emacs as a daemon from systemd or similar
+;; (when (daemonp)
+;;   (exec-path-from-shell-initialize))
 
 ;; theme 
 (use-package all-the-icons)
@@ -135,7 +121,6 @@
 
 ;; (load-theme 'modus-vivendi t)
 
-
 (use-package ivy
   :diminish ivy-mode
   :bind (("C-s" . swiper)
@@ -154,26 +139,35 @@
   :config
   (ivy-mode 1))
 
-;; ;; 有 bug，输入法不能跟随
-;; (use-package ivy-posframe
-;;   :diminish ivy-posframe-mode
-;;   ;; The :custom keyword allows customization of package custom variables.
-;;   :custom
-;;   (ivy-posframe-height-alist
-;;    '((swiper . 15)
-;;      (t . 10)))
-;;   (ivy-posframe-display-functions-alist
-;;    '((complete-symbol . ivy-posframe-display-at-point)
-;;      (counsel-describe-function . nil)
-;;      (counsel-describe-variable . nil)
-;;      (swiper . nil)
-;;      (swiper-isearch . nil)
-;;      (t . ivy-posframe-display-at-frame-center)
-;;      )
-;;    )
-;;   :config
-;;   (ivy-posframe-mode 1)
-;;   )
+;; 让 `C-j' `C-k' 在 ivy-occur 里也能用
+;; 这样无论是 occur 还是 ivy-occur 键都是统一的了
+(defun lf/ivy-occur-next(&optional arg)
+  "Move the cursor down and call `ivy-occur-press'."
+ (interactive "p")
+
+ (ivy-occur-next-line arg)
+ (ivy-occur-press)
+ )
+
+(defun lf/ivy-occur-previous(&optional arg)
+  "Move the cursor up and call `ivy-occur-press'."
+ (interactive "p")
+
+ (ivy-occur-previous-line arg)
+ (ivy-occur-press)
+ )
+
+;; 终于找到了只在特定的 buffer 或 mode 里重新定义 keybinding 的方法了
+;; 原来是要 `set-key' 而不是  `define-key'
+;; https://evil.readthedocs.io/en/latest/keymaps.html
+;; 抽时间可以将那些 override 方式定义的 keybinding 也改成这种方式
+;; override 定义的方式威力太大了
+(defun lf/c-jk-ivy-occur()
+  (evil-local-set-key 'normal (kbd "C-j") #'lf/ivy-occur-next)
+  (evil-local-set-key 'normal (kbd "C-k") #'lf/ivy-occur-previous)
+  )
+
+(add-hook 'ivy-occur-grep-mode-hook #'lf/c-jk-ivy-occur)
 
 ;; More friendly interface for ivy
 (use-package ivy-rich
@@ -270,6 +264,7 @@
     "k" '(evil-window-up :which-key "move cursor to up")
     "c" '(evil-window-delete :which-key "close window")
     "o" '(delete-other-windows :which-key "close other windows")
+    "m" '(lf/toggle-one-window :which-key "toggle maximize current window")
 
     "f" '(counsel-find-file :which-key "find file")
     "F" '(find-file-other-window :which-key "find file other window")
@@ -304,7 +299,16 @@
   ;; search by symbol
   ;; `-'默认不是一个 word
   (setq evil-symbol-word-search t)
-  ;; (setq evil-want-C-i-jump nil)
+  ;; for `gn' to work
+  ;; https://github.com/emacs-evil/evil/issues/1142
+  (setq evil-search-module 'evil-search)
+  ;; not persistent highlight, it's kind of annoying
+  ;; 下面这个设置只能部分解决问题, 当按了 `n' 等, highlight 又出来了..
+  ;; https://emacs.stackexchange.com/questions/57644/expiring-search-highlights-in-evil
+  (setq evil-ex-search-persistent-highlight nil)
+  ;; 而当设置了下面这个后, highlight 直接全部没有了..
+  ;; 还是喜欢 isearch 的方式, 亮一会再灭
+  (setq evil-ex-search-highlight-all nil)
   :config
   (evil-mode 1)
   (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
@@ -391,16 +395,21 @@
 (use-package evil-commentary
   :config (evil-commentary-mode))
 
-;; 在 ivy-occur 里不要启用 evil-commentary
+;; 在 ivy-occur 里的 gc 和 evil-commentary 的 gc 冲突了
 ;; 因为我想用 gc 来开启 ivy-occur 里的 ivy-calling 模式
-(defun lf/disable-evil-commentary ()
-  (evil-commentary-mode -1)
+;; 但又不能关闭 `evil-commentary-mode' 因为它是全局的, 在这里关了
+;; 之后, 其它地方也都不能用了..
+(defun lf/ivy-occur-redefine-gc ()
+  (evil-local-set-key 'normal (kbd "g c") #'ivy-occur-toggle-calling)
   )
-(add-hook 'ivy-occur-grep-mode-hook #'lf/disable-evil-commentary)
+(add-hook 'ivy-occur-grep-mode-hook #'lf/ivy-occur-redefine-gc)
 
 ;; https://github.com/emacs-evil/evil-surround
 (use-package evil-surround
   :config
+  ;; 增加自定义的 surround pair
+  (setq-default evil-surround-pairs-alist
+                (push '(?' . ("'" . "'")) evil-surround-pairs-alist))
   (global-evil-surround-mode 1))
 
 ;; 更强大的类似 vim 里的 f/t
@@ -497,6 +506,8 @@
          ("C-c ;" . nil)
          )
   :custom
+  ;; use `python3' in org babel
+  (org-babel-python-command "python3")
   ;; Fast todo selection allows changing
   ;; from any task todo state to any other state directly
   (org-use-fast-todo-selection t)
@@ -558,6 +569,7 @@
   (add-to-list 'org-structure-template-alist '("api" . "src restclient"))
   (add-to-list 'org-structure-template-alist '("sh" . "src shell"))
   (add-to-list 'org-structure-template-alist '("org" . "src org"))
+  (add-to-list 'org-structure-template-alist '("sql" . "src sql"))
   (add-to-list 'org-structure-template-alist '("el" . "src emacs-lisp"))
   (add-to-list 'org-structure-template-alist '("py" . "src python")))
 
@@ -569,6 +581,7 @@
    (emacs-lisp . t)
    (shell . t)
    (restclient . t)
+   (sql . t)
    ))
 
 ;; no confirm for babel-evaluate
@@ -580,6 +593,30 @@
   (define-key org-agenda-mode-map "k" 'evil-previous-line)
   )
 (add-hook 'org-agenda-mode-hook #'lf/org-agenda-jk)
+
+
+;; disable auto pair for `<' and `\[' in org-mode
+;; since it will interface with code block
+;; complete in org-mode
+;; https://emacs.stackexchange.com/questions/26225/dont-pair-quotes-in-electric-pair-mode
+(defun lf/electric-pair-inhibit-ignore ()
+  (setq-local electric-pair-inhibit-predicate
+              (lambda (c)
+                (if (or (char-equal c ?<) (char-equal c ?\[))
+                t
+                (electric-pair-default-inhibit c)))))
+(add-hook 'org-mode-hook 'lf/electric-pair-inhibit-ignore)
+
+(defun lf/org-remap-keys ()
+  (evil-define-key '(insert normal) org-mode-map (kbd "M-l")  #'org-metaright)
+  (evil-define-key '(insert normal) org-mode-map (kbd "M-h")  #'org-metaleft)
+  (evil-define-key '(insert normal) org-mode-map (kbd "M-j")  #'org-metadown)
+  (evil-define-key '(insert normal) org-mode-map (kbd "M-k")  #'org-metaup)
+  ;; org 里 `M-<return>' 被绑定到 `org-ctrl-c-ret'
+  ;; 我想绑定到 `org-meta-return', 它会根据所在 context 不同而采用不同的行为, 更实用 
+  (evil-local-set-key 'normal (kbd "M-<return>") #'org-meta-return)
+  )
+(add-hook 'org-mode-hook #'lf/org-remap-keys)
 
 (use-package lsp-mode
   :commands (lsp lsp-deferred)
@@ -635,6 +672,29 @@
 ;; https://github.com/brantou/emacs-go-tag
 (use-package go-tag)
 
+;; python
+(use-package python-mode
+  :custom
+  ;; NOTE: Set these if Python 3 is called "python3" on your system!
+  (python-shell-interpreter "python3"))
+
+(defun lf/py-enable-lsp()
+  (require 'lsp-pyright)
+  (lsp-deferred)
+  )
+
+(use-package lsp-pyright
+  :hook (python-mode . lf/py-enable-lsp)
+  )
+
+;; 让 org-babel 里的代码也能用 lsp 的功能
+;; 若要支持其它语言, 需要增加其它语言的定制函数
+;; https://github.com/emacs-lsp/lsp-mode/issues/2842
+;; 理解了下代码, 其实也就是设置了一下 buffer 关联的文件名而已
+;; 其实没必要设置 tangle header
+(defun org-babel-edit-prep:python (babel-info)
+  (setq-local buffer-file-name (->> babel-info caddr (alist-get :tangle)))
+  (lsp))
 
 ;; for code completion
 (use-package company
@@ -994,36 +1054,35 @@
 ;; 在 evil 的配置里把 `gs' 绑定到 avy-goto-char-timer 上了
 (use-package avy)
 
-(use-package evil-mc
-  :config
-  (global-evil-mc-mode  1))
+;; (use-package evil-mc
+;;   :config
+;;   (global-evil-mc-mode  1))
 
-;; evil-mc
-(evil-define-key '(normal visual) 'global
-  "gzm" #'evil-mc-make-all-cursors
-  "gzu" #'evil-mc-undo-all-cursors
-  "gzI" #'evil-mc-make-cursor-in-visual-selection-beg
-  "gzA" #'evil-mc-make-cursor-in-visual-selection-end
-  "gzn" #'evil-mc-make-and-goto-next-cursor
-  "gzp" #'evil-mc-make-and-goto-prev-cursor
-  "gzN" #'evil-mc-make-and-goto-last-cursor
-  "gzP" #'evil-mc-make-and-goto-first-cursor)
-;; `C-n' / `C-p' 用于在 cursor 之间移动
-;; `M-n' / `M-p' 用于取消掉不想要的 cursor
-(with-eval-after-load 'evil-mc
-  (evil-define-minor-mode-key '(normal visual) evil-mc-mode
-    (kbd "C-n") #'evil-mc-make-and-goto-next-cursor
-    (kbd "M-n") #'evil-mc-skip-and-goto-next-cursor
-    (kbd "C-p") #'evil-mc-make-and-goto-prev-cursor)
-    (kbd "M-p") #'evil-mc-skip-and-goto-prev-cursor)
+;; ;; evil-mc
+;; (evil-define-key '(normal visual) 'global
+;;   "gzm" #'evil-mc-make-all-cursors
+;;   "gzu" #'evil-mc-undo-all-cursors
+;;   "gzI" #'evil-mc-make-cursor-in-visual-selection-beg
+;;   "gzA" #'evil-mc-make-cursor-in-visual-selection-end
+;;   "gzn" #'evil-mc-make-and-goto-next-cursor
+;;   "gzp" #'evil-mc-make-and-goto-prev-cursor
+;;   "gzN" #'evil-mc-make-and-goto-last-cursor
+;;   "gzP" #'evil-mc-make-and-goto-first-cursor)
+;; ;; `C-n' / `C-p' 用于在 cursor 之间移动
+;; ;; `M-n' / `M-p' 用于取消掉不想要的 cursor
+;; (with-eval-after-load 'evil-mc
+;;   (evil-define-minor-mode-key '(normal visual) evil-mc-mode
+;;     (kbd "C-n") #'evil-mc-make-and-goto-next-cursor
+;;     (kbd "M-n") #'evil-mc-skip-and-goto-next-cursor
+;;     (kbd "C-p") #'evil-mc-make-and-goto-prev-cursor)
+;;     (kbd "M-p") #'evil-mc-skip-and-goto-prev-cursor)
 
 
-;; org 里 `M-<return>' 被绑定到 `org-ctrl-c-ret'
-;; 我想绑定到 `org-meta-return'，折腾半天不行，后来发现
-;; 是 evil mode 的问题，需要如下设置才行
+;; 所有因 evil mode 导致实在无法绑定的 key 在这里搞定:
+;; 但这种方式副作用极大(定义的 key 是全局的), 轻易不要用
 ;; https://github.com/noctuid/evil-guide#preventing-certain-keys-from-being-overridden
 (general-override-mode)
-(general-def 'normal 'override "M-<return>" 'org-meta-return)
+
 ;; what is '/body'?
 ;; it's generated by defhydra
 ;; https://github.com/abo-abo/hydra/blob/master/hydra-examples.el
@@ -1032,7 +1091,7 @@
 (general-def '(normal visual) 'override "SPC w s" '(hydra-window-scale/body :which-key "scale window"))
 
 ;; 看来这个办法是万能的, 任何通过正常方式没法 bind 的, 用这种方式都能成功
-;; 没有以下代码之前, 这些 keybinding 在一些特殊的 buffer 里不起作用, 比如\
+;; 没有以下代码之前, 这些 keybinding 在一些特殊的 buffer 里不起作用, 比如
 ;; Info 或者 help 里.
 (general-def '(normal visual) 'override
   "SPC s" '(evil-window-split :which-key "split window horizontally")
@@ -1045,10 +1104,27 @@
   "SPC o" '(delete-other-windows :which-key "close other windows"))
 
 ;; 重新映射 find-file
-;; TODO: 需要想个办法来表达 horizontal split, 又不想增加按键数量
 (general-def '(normal visual) 'override
+  "SPC pff" '(counsel-projectile-find-file :which-key "find file in project current buffer")
   "SPC pfv" '(lf/counsel-projectile-find-file-v :which-key "find file in project vertically")
   "SPC pfs" '(lf/counsel-projectile-find-file-s :which-key "find file in project horizontally")
+  )
+
+(defun lf/find-def-split ()
+  (interactive)
+
+  (evil-window-split)
+  (lsp-find-definition)
+  )
+(defun lf/find-def-vsplit ()
+  (interactive)
+
+  (evil-window-vsplit)
+  (lsp-find-definition)
+  )
+;; 先不绑 horizontal split 了, 因为 `gs' 已经被 avy 用了
+(general-def '(normal visual) 'override
+  "g v" '(lf/find-def-vsplit :which-key "find def in vertically splitted window")
   )
 
 ;; org-roam
@@ -1173,5 +1249,96 @@
   restclient
   )
 
+;; sql format
+;; https://github.com/purcell/sqlformat
+;; 需要先安装 sqlfluff: brew install sqlfluff
+(use-package sqlformat)
+(setq sqlformat-command 'sqlfluff)
+(setq sqlformat-args '("--dialect" "mysql"))
+(defun lf/after-sql-mode()
+  (sqlformat-on-save-mode)
+  (define-key sql-mode-map (kbd "C-c C-f") 'sqlformat-buffer)
+  )
+(add-hook 'sql-mode-hook #'lf/after-sql-mode)
+
+;; This package adds the :hydra keyword to the use-package macro.
+(use-package use-package-hydra)
+
+;; 用 hydra 来简化按键
+;; 灵感来自: https://github.com/abo-abo/hydra/wiki/multiple-cursors
+;; https://zhuanlan.zhihu.com/p/450512406
+;; evil-multiedit 在完成多光标标记后可以使用 evil 的很多按键
+;; 比如`I' 到行首插入, `A' 到行尾插入, `gg' 移动到第一个, `G'移动到最后一个
+;; 按 `C-g' 来退出多光标编辑模式
+;; 感觉多光标编辑比较局限, 此方式只作为一个备选, 主要还是用类似原来 vim 中的查找替换吧
+;; 参考: https://emacs-china.org/t/spacemcs-evil-mc-evil-mc-undo-all-cursors/8436/5
+;; 在查询过程中学到一个 vim / evil 中编辑多行的快捷方法: `cgn', 改完后再一直按`.'来 replay 即可, 按 n 可以跳过
+;; 参考: https://medium.com/@schtoeffel/you-don-t-need-more-than-one-cursor-in-vim-2c44117d51db
+;; https://medium.com/@lynzt/emacs-evil-evil-search-mode-and-the-cgn-command-839c633ba7f3
+;; 这种方式比 `:%s/foo/bar/gc' 要简单一些
+(use-package evil-multiedit
+  :after hydra
+  :bind
+  (("C-c m" . hydra-evil-multiedit/body))
+  :hydra (hydra-evil-multiedit
+		  (:hint nil)
+		  "
+Up^^             Down^^           Miscellaneous 
+------------------------------------------------------------------
+ [_k_]   Prev     [_j_]   Next     [_m_] Mark next      [_RET_] Toggle mark  
+                               [_a_] Mark all       [_q_] Quit  
+                               [_M_] Mark previous"
+		  ("a" evil-multiedit-match-all)
+		  ("j" evil-multiedit-next)
+		  ("k" evil-multiedit-prev)
+		  ("RET" evil-multiedit-toggle-or-restrict-region)
+		  ("m" evil-multiedit-match-and-next)
+          ("M" evil-multiedit-match-and-prev)
+		  ("q" nil))
+  )
+
+;; yaml-mode
+;; https://github.com/yoshiki/yaml-mode
+(use-package yaml-mode
+  :mode
+  (("\\.yml\\'" . yaml-mode))
+  )
+
+;; json
+(use-package json-mode
+  :mode (rx ".json" eos)
+  )
+
+
+;; https://stackoverflow.com/questions/9288181/converting-from-camelcase-to-in-emacs
+(use-package string-inflection
+  :bind
+  (
+   ("C-c C" . string-inflection-camelcase)
+   )
+  )
+
+;; (use-package impostman)
+
 ;; 如何恢复之前打开过的窗口？
 ;; https://stackoverflow.com/questions/7641755/maximizing-restoring-a-window-in-emacs
+
+;; 忘了为何加这个配置了
+(put 'narrow-to-region 'disabled nil)
+
+;; maximize and restore current window
+;; copied from https://github.com/manateelazycat/toggle-one-window/blob/main/toggle-one-window.el
+(defvar toggle-one-window-window-configuration nil
+  "The window configuration use for `toggle-one-window'.")
+
+(defun lf/toggle-one-window ()
+  "Toggle between window layout and one window."
+  (interactive)
+  (if (equal (length (cl-remove-if #'window-dedicated-p (window-list))) 1)
+      (if toggle-one-window-window-configuration
+          (progn
+            (set-window-configuration toggle-one-window-window-configuration)
+            (setq toggle-one-window-window-configuration nil))
+        (message "No other windows exist."))
+    (setq toggle-one-window-window-configuration (current-window-configuration))
+    (delete-other-windows)))
