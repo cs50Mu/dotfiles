@@ -41,6 +41,8 @@
 ;; display line numbers
 (column-number-mode)
 (global-display-line-numbers-mode 1)
+;; use relative number
+(setq display-line-numbers-type 'relative)
 
 ;; enable auto pair
 (electric-pair-mode)
@@ -54,6 +56,8 @@
                 term-mode-hook))
   (add-hook mode 'lf/disable-line-number))
 
+;; set locale
+(setenv "LANG" "en_US.UTF-8")
  
 ;; font && size
 (set-face-attribute 'default nil :font "Fira Code Retina" :height lf/default-font-size)
@@ -67,6 +71,9 @@
 ;; Make ESC quit prompts
 (global-set-key (kbd "<escape>") 'keyboard-escape-quit)
 
+;; compilation mode
+;; don't ask, just save it
+(setq compilation-ask-about-save nil)
 
 ;; Initialize package sources
 (require 'package)
@@ -88,17 +95,17 @@
 
 ;; 理论上, 用 emacs-plus 就没有必要使用以下配置了
 
-;; ;; https://github.com/purcell/exec-path-from-shell
-;; (use-package exec-path-from-shell)
+;; https://github.com/purcell/exec-path-from-shell
+(use-package exec-path-from-shell)
 
-;; ;; This sets $MANPATH, $PATH and exec-path from your shell, but only
-;; ;; when executed in a GUI frame on OS X and Linux.
-;; (when (memq window-system '(mac ns x))
-;;   (exec-path-from-shell-initialize))
+;; This sets $MANPATH, $PATH and exec-path from your shell, but only
+;; when executed in a GUI frame on OS X and Linux.
+(when (memq window-system '(mac ns x))
+  (exec-path-from-shell-initialize))
 
-;; ;; If you launch Emacs as a daemon from systemd or similar
-;; (when (daemonp)
-;;   (exec-path-from-shell-initialize))
+;; If you launch Emacs as a daemon from systemd or similar
+(when (daemonp)
+  (exec-path-from-shell-initialize))
 
 ;; theme 
 (use-package all-the-icons)
@@ -127,47 +134,46 @@
          :map ivy-minibuffer-map
          ("TAB" . ivy-alt-done)	
          ("C-l" . ivy-alt-done)
-         ("C-j" . ivy-next-line)
-         ("C-k" . ivy-previous-line)
+         ;; 这里影响的是 M-x 弹出的 minibuffer
+         ;; 因为 M-x 实际调用的是 ivy / swiper 这一套
+         ;; `M-v' 用来粘贴 Emacs 之外复制的内容（系统剪贴板）
+         ;; `C-y' 用来粘贴 Emacs 里复制的内容 
+         ("M-v" . simpleclip-paste)
          :map ivy-switch-buffer-map
-         ("C-k" . ivy-previous-line)
          ("C-l" . ivy-done)
          ("C-d" . ivy-switch-buffer-kill)
          :map ivy-reverse-i-search-map
-         ("C-k" . ivy-previous-line)
          ("C-d" . ivy-reverse-i-search-kill))
   :config
   (ivy-mode 1))
 
-;; 让 `C-j' `C-k' 在 ivy-occur 里也能用
-;; 这样无论是 occur 还是 ivy-occur 键都是统一的了
-(defun lf/ivy-occur-next(&optional arg)
-  "Move the cursor down and call `ivy-occur-press'."
- (interactive "p")
+;; (defun lf/ivy-occur-next(&optional arg)
+;;   "Move the cursor down and call `ivy-occur-press'."
+;;  (interactive "p")
 
- (ivy-occur-next-line arg)
- (ivy-occur-press)
- )
+;;  (ivy-occur-next-line arg)
+;;  (ivy-occur-press)
+;;  )
 
-(defun lf/ivy-occur-previous(&optional arg)
-  "Move the cursor up and call `ivy-occur-press'."
- (interactive "p")
+;; (defun lf/ivy-occur-previous(&optional arg)
+;;   "Move the cursor up and call `ivy-occur-press'."
+;;  (interactive "p")
 
- (ivy-occur-previous-line arg)
- (ivy-occur-press)
- )
+;;  (ivy-occur-previous-line arg)
+;;  (ivy-occur-press)
+;;  )
 
-;; 终于找到了只在特定的 buffer 或 mode 里重新定义 keybinding 的方法了
-;; 原来是要 `set-key' 而不是  `define-key'
-;; https://evil.readthedocs.io/en/latest/keymaps.html
-;; 抽时间可以将那些 override 方式定义的 keybinding 也改成这种方式
-;; override 定义的方式威力太大了
-(defun lf/c-jk-ivy-occur()
-  (evil-local-set-key 'normal (kbd "C-j") #'lf/ivy-occur-next)
-  (evil-local-set-key 'normal (kbd "C-k") #'lf/ivy-occur-previous)
-  )
+;; ;; 终于找到了只在特定的 buffer 或 mode 里重新定义 keybinding 的方法了
+;; ;; 原来是要 `set-key' 而不是  `define-key'
+;; ;; https://evil.readthedocs.io/en/latest/keymaps.html
+;; ;; 抽时间可以将那些 override 方式定义的 keybinding 也改成这种方式
+;; ;; override 定义的方式威力太大了
+;; (defun lf/c-jk-ivy-occur()
+;;   (evil-local-set-key 'normal (kbd "C-n") #'lf/ivy-occur-next)
+;;   (evil-local-set-key 'normal (kbd "C-p") #'lf/ivy-occur-previous)
+;;   )
 
-(add-hook 'ivy-occur-grep-mode-hook #'lf/c-jk-ivy-occur)
+;; (add-hook 'ivy-occur-grep-mode-hook #'lf/c-jk-ivy-occur)
 
 ;; More friendly interface for ivy
 (use-package ivy-rich
@@ -238,9 +244,14 @@
   :config
   ;; use C-; to switch input source
   (general-define-key "C-;" 'sis-switch)
+  ;; (general-define-key "C-;" 'toggle-input-method)
 
   (general-define-key "C-c c" 'org-capture)
   (general-define-key "C-c a" 'org-agenda)
+  ;; https://github.com/company-mode/company-mode/blob/master/company-yasnippet.el
+  (general-define-key "C-c y" 'yas-expand)
+  (general-define-key "C-c fn" 'flycheck-next-error)
+  (general-define-key "C-c fp" 'flycheck-previous-error)
 
   ;; use SPC for leader key
   ;; lf is short for linuxfish
@@ -269,12 +280,15 @@
     "f" '(counsel-find-file :which-key "find file")
     "F" '(find-file-other-window :which-key "find file other window")
     "g" '(magit-status :which-key "magit status")
-    ;; "d" '(dired-jump :which-key "dired")
+    "d" '(dired-jump :which-key "dired")
     ; try ranger
-    "d" '(ranger :which-key "ranger")
+    ;; "d" '(ranger :which-key "ranger")
     "SPC" '(counsel-ibuffer :which-key "switch buffer")
     "bh" '(previous-buffer :which-key "switch to previous buffer")
     "bl" '(next-buffer :which-key "switch to next buffer")
+    ;; compile
+    "ec" '(compile :which-key "compile")
+    "er" '(recompile :which-key "recompile")
     )
   )
 
@@ -290,12 +304,15 @@
 (defadvice evil-window-vsplit (after vsplit-window-after activate)
   (other-window 1))
 
+;; (use-package undo-tree)
+
 ;; 可以用 `C-z` 来 toggle evil mode
 (use-package evil
   :init
   (setq evil-want-integration t)
   (setq evil-want-keybinding nil)
   (setq evil-want-C-u-scroll t)
+  (setq evil-want-fine-undo t)
   ;; search by symbol
   ;; `-'默认不是一个 word
   (setq evil-symbol-word-search t)
@@ -313,9 +330,6 @@
   (evil-mode 1)
   (define-key evil-insert-state-map (kbd "C-g") 'evil-normal-state)
   (define-key evil-insert-state-map (kbd "C-h") 'evil-delete-backward-char-and-join)
-  ;; paste from clipboard
-  (define-key evil-insert-state-map (kbd "M-v") 'clipboard-yank)
-
   ;; ;; use SPC as leader key for window management
   ;; ;; https://stackoverflow.com/questions/33725550/emacs-evil-general-window-movement-remap
   ;; ;; evil-window-map 在 evil-mode 中有定义
@@ -328,8 +342,11 @@
   (evil-global-set-key 'motion "k" 'evil-previous-visual-line)
 
   (evil-global-set-key 'motion "gs" 'avy-goto-char-timer)
+  ;; use `command-v' to paste from system clipboard
+  (evil-define-key '(motion insert) 'global (kbd "M-v") 'simpleclip-paste)
 
   (evil-set-undo-system 'undo-redo)
+  ;; (evil-set-undo-system 'undo-tree)
 
   (evil-set-initial-state 'messages-buffer-mode 'normal)
   (evil-set-initial-state 'dashboard-mode 'normal))
@@ -408,8 +425,8 @@
 (use-package evil-surround
   :config
   ;; 增加自定义的 surround pair
-  (setq-default evil-surround-pairs-alist
-                (push '(?' . ("'" . "'")) evil-surround-pairs-alist))
+  (push '(?' . ("'" . "'")) evil-surround-pairs-alist)
+  (push '(?~ . ("~" . "~")) evil-surround-pairs-alist) ;; 这个不起作用，是因为 `~' 已经被绑定到 evil-invert-char 上了
   (global-evil-surround-mode 1))
 
 ;; 更强大的类似 vim 里的 f/t
@@ -652,7 +669,6 @@
   (add-hook 'before-save-hook #'lsp-format-buffer t t)
   (add-hook 'before-save-hook #'lsp-organize-imports t t))
 
-;; ;; TODO: yasnippet?
 ;; ;; 这种写法不能启动 lsp。。
 ;; (use-package go-mode
 ;;   :hook (lsp-deferred lsp-go-before-save-hooks))
@@ -671,6 +687,19 @@
 ;; for golang struct tag
 ;; https://github.com/brantou/emacs-go-tag
 (use-package go-tag)
+
+(use-package yasnippet
+  :ensure t
+  :hook
+  (prog-mode . yas-minor-mode)
+  :config
+  (yas-reload-all)
+  )
+
+(use-package yasnippet-snippets
+  :ensure t
+  :after yasnippet)
+
 
 ;; python
 (use-package python-mode
@@ -752,9 +781,14 @@
   ((insert-directory-program "gls" dired-use-ls-dired t)
    (dired-listing-switches "-agho --group-directories-first"))
   :config
+  ;; move files between split panes
+  (setq dired-dwim-target t)
   (evil-collection-define-key 'normal 'dired-mode-map
     "h" 'dired-single-up-directory
     "l" 'dired-single-buffer))
+;; 增强功能
+;; https://www.gnu.org/software/emacs/manual/html_mono/dired-x.html
+(require 'dired-x)
 
 ;; https://github.com/crocket/dired-single
 ;; for dired-single-up-directory to work
@@ -775,12 +809,12 @@
 (setq insert-directory-program "gls" dired-use-ls-dired t)
 (setq dired-listing-switches "-al --group-directories-first")
 
-;; try ranger
-(use-package ranger
-  :config
-  (setq ranger-preview-file nil))
-;; set ranger as the default directory manager
-(ranger-override-dired-mode t)
+;; ;; try ranger
+;; (use-package ranger
+;;   :config
+;;   (setq ranger-preview-file nil))
+;; ;; set ranger as the default directory manager
+;; (ranger-override-dired-mode t)
 
 (use-package projectile
   :diminish projectile-mode
@@ -790,7 +824,7 @@
   (when (file-directory-p "~/work/gitlab.luojilab.com")
     ;; path 是一个 list paths
     ;; 每个 path 都支持定义搜索深度
-    (setq projectile-project-search-path '(("~/work/gitlab.luojilab.com" . 3))))
+    (setq projectile-project-search-path '(("~/Work/gitlab.luojilab.com" . 3))))
   (setq projectile-switch-project-action #'projectile-dired))
 
 ;; use rg to search everywhere
@@ -817,6 +851,10 @@
    ("M-s g" . lf/grep-vc-or-dir)
    )
   )
+
+;; focus on rg buffer after a search
+;; https://github.com/dajva/rg.el/issues/142
+(add-to-list 'rg-finish-functions (lambda (buffer _) (pop-to-buffer buffer)))
 
 (use-package counsel-projectile
   :config (counsel-projectile-mode))
@@ -1019,8 +1057,9 @@
    "com.apple.keylayout.ABC"
 
    ;; Other language input source: "rime", "sogou" or another one.
-   ;; "im.rime.inputmethod.Squirrel.Rime"
-   "com.sogou.inputmethod.sogou.pinyin")
+   "im.rime.inputmethod.Squirrel.Rime"
+   ;; "com.sogou.inputmethod.sogou.pinyin"
+   )
 
   ;; enable the /cursor color/ mode
   (sis-global-cursor-color-mode t)
@@ -1054,30 +1093,6 @@
 ;; 在 evil 的配置里把 `gs' 绑定到 avy-goto-char-timer 上了
 (use-package avy)
 
-;; (use-package evil-mc
-;;   :config
-;;   (global-evil-mc-mode  1))
-
-;; ;; evil-mc
-;; (evil-define-key '(normal visual) 'global
-;;   "gzm" #'evil-mc-make-all-cursors
-;;   "gzu" #'evil-mc-undo-all-cursors
-;;   "gzI" #'evil-mc-make-cursor-in-visual-selection-beg
-;;   "gzA" #'evil-mc-make-cursor-in-visual-selection-end
-;;   "gzn" #'evil-mc-make-and-goto-next-cursor
-;;   "gzp" #'evil-mc-make-and-goto-prev-cursor
-;;   "gzN" #'evil-mc-make-and-goto-last-cursor
-;;   "gzP" #'evil-mc-make-and-goto-first-cursor)
-;; ;; `C-n' / `C-p' 用于在 cursor 之间移动
-;; ;; `M-n' / `M-p' 用于取消掉不想要的 cursor
-;; (with-eval-after-load 'evil-mc
-;;   (evil-define-minor-mode-key '(normal visual) evil-mc-mode
-;;     (kbd "C-n") #'evil-mc-make-and-goto-next-cursor
-;;     (kbd "M-n") #'evil-mc-skip-and-goto-next-cursor
-;;     (kbd "C-p") #'evil-mc-make-and-goto-prev-cursor)
-;;     (kbd "M-p") #'evil-mc-skip-and-goto-prev-cursor)
-
-
 ;; 所有因 evil mode 导致实在无法绑定的 key 在这里搞定:
 ;; 但这种方式副作用极大(定义的 key 是全局的), 轻易不要用
 ;; https://github.com/noctuid/evil-guide#preventing-certain-keys-from-being-overridden
@@ -1101,7 +1116,15 @@
   "SPC j" '(evil-window-down :which-key "move cursor to down")
   "SPC k" '(evil-window-up :which-key "move cursor to up")
   "SPC c" '(evil-window-delete :which-key "close window")
-  "SPC o" '(delete-other-windows :which-key "close other windows"))
+  "SPC o" '(delete-other-windows :which-key "close other windows")
+  "SPC d" '(dired-jump :which-key "dired")
+  "SPC f" '(counsel-find-file :which-key "find file")
+  ;; "SPC d" '(ranger :which-key "ranger")
+  "SPC m" '(lf/toggle-one-window :which-key "toggle maximize current window")
+  ;; compile
+  "SPC ec" '(compile :which-key "compile")
+  "SPC er" '(recompile :which-key "recompile")
+    )
 
 ;; 重新映射 find-file
 (general-def '(normal visual) 'override
@@ -1217,11 +1240,6 @@
 ;; https://github.com/lorniu/go-translate/issues/6
 (defun lf/disable-evil ()
   (turn-off-evil-mode)
-  ;; 绑了两个 key 来移动行
-  ;; 另外也可以用 emacs 的 key 来滚动屏幕:
-  ;; C-v 来向下移动; M-v 来向上移动
-  (general-define-key "C-j" #'next-line)
-  (general-define-key "C-k" #'previous-line)
   )
 
 (use-package go-translate
@@ -1264,40 +1282,48 @@
 ;; This package adds the :hydra keyword to the use-package macro.
 (use-package use-package-hydra)
 
-;; 用 hydra 来简化按键
-;; 灵感来自: https://github.com/abo-abo/hydra/wiki/multiple-cursors
-;; https://zhuanlan.zhihu.com/p/450512406
-;; evil-multiedit 在完成多光标标记后可以使用 evil 的很多按键
-;; 比如`I' 到行首插入, `A' 到行尾插入, `gg' 移动到第一个, `G'移动到最后一个
-;; 按 `C-g' 来退出多光标编辑模式
-;; 感觉多光标编辑比较局限, 此方式只作为一个备选, 主要还是用类似原来 vim 中的查找替换吧
-;; 参考: https://emacs-china.org/t/spacemcs-evil-mc-evil-mc-undo-all-cursors/8436/5
-;; 在查询过程中学到一个 vim / evil 中编辑多行的快捷方法: `cgn', 改完后再一直按`.'来 replay 即可, 按 n 可以跳过
-;; 参考: https://medium.com/@schtoeffel/you-don-t-need-more-than-one-cursor-in-vim-2c44117d51db
-;; https://medium.com/@lynzt/emacs-evil-evil-search-mode-and-the-cgn-command-839c633ba7f3
-;; 这种方式比 `:%s/foo/bar/gc' 要简单一些
-(use-package evil-multiedit
-  :after hydra
-  :bind
-  (("C-c m" . hydra-evil-multiedit/body))
-  :hydra (hydra-evil-multiedit
-		  (:hint nil)
-		  "
-Up^^             Down^^           Miscellaneous 
-------------------------------------------------------------------
- [_k_]   Prev     [_j_]   Next     [_m_] Mark next      [_RET_] Toggle mark  
-                               [_a_] Mark all       [_q_] Quit  
-                               [_M_] Mark previous"
-		  ("a" evil-multiedit-match-all)
-		  ("j" evil-multiedit-next)
-		  ("k" evil-multiedit-prev)
-		  ("RET" evil-multiedit-toggle-or-restrict-region)
-		  ("m" evil-multiedit-match-and-next)
-          ("M" evil-multiedit-match-and-prev)
-		  ("q" nil))
-  )
+;; https://github.com/gabesoft/evil-mc
+;; https://emacs-china.org/t/doom-evil-mc/23567/1
+;; 使用方法：按 `C-c m' 进入，然后使用快捷键来设置光标
+;; 然后再多光标编辑，
+;; 编辑完成后（此时已经退出hydra）还需要重新按 `C-c m' 进入
+;; 后按 `q' 来退出多行编辑模式
+(use-package evil-mc
+  :diminish
+  :hook (after-init . global-evil-mc-mode)
+  :init
+  (defvar evil-mc-key-map (make-sparse-keymap))
+  :config
+  (defhydra hydra-evil-mc (:color blue :hint nil)
+    "
+ _M_ all match          _m_ here           _u_ undo
+ _n_ next match         _J_ next line      _s_ suspend
+ _p_ prev match         _K_ previous line  _r_ resume
+ _N_ skip & next match  _H_ first cursor   _q_ quit
+ _P_ skip & prev match  _L_ last cursor
+    "
+    ("m" evil-mc-make-cursor-here :exit nil)
+    ("M" evil-mc-make-all-cursors :exit nil)
+    ("n" evil-mc-make-and-goto-next-match :exit nil)
+    ("p" evil-mc-make-and-goto-prev-match :exit nil)
+    ("N" evil-mc-skip-and-goto-next-match :exit nil)
+    ("P" evil-mc-skip-and-goto-prev-match :exit nil)
+    ("J" evil-mc-make-cursor-move-next-line :exit nil)
+    ("K" evil-mc-make-cursor-move-prev-line :exit nil)
+    ("H" evil-mc-make-and-goto-first-cursor :exit nil)
+    ("L" evil-mc-make-and-goto-last-cursor :exit nil)
+    ("u" evil-mc-undo-last-added-cursor :exit nil)
+    ("r" evil-mc-resume-cursors)
+    ("s" evil-mc-pause-cursors)
+    ("q" evil-mc-undo-all-cursors))
 
-;; yaml-mode
+  (evil-define-key* '(normal visual) 'global
+    (kbd "C-c m") 'hydra-evil-mc/body)
+
+  (evil-define-key* 'visual evil-mc-key-map
+    "A" 'evil-mc-make-cursor-in-visual-selection-end
+    "I" 'evil-mc-make-cursor-in-visual-selection-beg))
+
 ;; https://github.com/yoshiki/yaml-mode
 (use-package yaml-mode
   :mode
@@ -1342,3 +1368,62 @@ Up^^             Down^^           Miscellaneous
         (message "No other windows exist."))
     (setq toggle-one-window-window-configuration (current-window-configuration))
     (delete-other-windows)))
+
+;; ;; emacs-rime
+;; (use-package rime
+;;   :custom
+;;   (default-input-method "rime")
+;;   (rime-librime-root "~/.emacs.d/librime/dist")
+;;   (rime-user-data-dir "/Users/linuxfish/Library/Rime")
+;;   (rime-show-candidate 'posframe)
+;;   (rime-inline-ascii-trigger 'shift-l)
+;;   (rime-disable-predicates
+;;    '(rime-predicate-evil-mode-p
+;;      rime-predicate-prog-in-code-p
+;;      rime-predicate-org-in-src-block-p
+;;      ;; rime-predicate-after-alphabet-char-p
+;;      ;; rime-predicate-space-after-ascii-p
+;;      ;; rime-predicate-space-after-cc-p
+;;      ;; rime-predicate-current-uppercase-letter-p
+;;      ))
+;;   (rime-inline-predicates
+;;    '(rime-predicate-space-after-cc-p
+;;      rime-predicate-current-uppercase-letter-p
+;;      )
+;;    )
+;;   )
+
+(defun my/upcase-backwards ()
+  "Upcase word in reverse direction, back until the first space char or beginning-of-line"
+  (interactive)
+  (save-excursion
+    ;; move to first non-space char
+    (skip-syntax-backward " " (line-beginning-position))
+    (push-mark)
+    (let ((beginning (or (re-search-backward "[[:space:]]" (line-beginning-position) t)
+                         (line-beginning-position)))
+          (end (mark)))
+      (unless (= beginning end)
+        (upcase-region beginning end)))))
+
+(global-set-key (kbd "M-o") 'my/upcase-backwards)
+
+
+;; support for ziglang
+(use-package zig-mode)
+
+;; symbol highlight
+;; use `symbol-overlay-remove-all' to remove all the highlight
+(use-package symbol-overlay
+  :defer t
+  :config (setq symbol-overlay-scope t)
+  :bind (("M-i" . symbol-overlay-put)))
+
+(use-package expand-region
+  :bind (("C-=" . er/expand-region))
+  )
+
+(use-package simpleclip
+  :config
+  (simpleclip-mode 1)
+  )

@@ -16,26 +16,26 @@
 	smudge = git-lfs smudge -- %f
 	process = git-lfs filter-process
 
-; dandavison/delta
-; https://github.com/dandavison/delta
-; A viewer for git and diff output
-[pager]
-    diff = delta
-    log = delta
-    reflog = delta
-    show = delta
+; ; dandavison/delta
+; ; https://github.com/dandavison/delta
+; ; A viewer for git and diff output
+; [pager]
+;     diff = delta
+;     log = delta
+;     reflog = delta
+;     show = delta
 
-[delta]
-    plus-style = "syntax #012800"
-    minus-style = "syntax #340001"
-    syntax-theme = Monokai Extended
-    ; syntax-theme = GitHub
-    navigate = true
-    side-by-side = true
-    paging = always
+; [delta]
+;     plus-style = "syntax #012800"
+;     minus-style = "syntax #340001"
+;     syntax-theme = Monokai Extended
+;     ; syntax-theme = GitHub
+;     navigate = true
+;     side-by-side = true
+;     paging = always
 
-[interactive]
-    diffFilter = delta --color-only
+; [interactive]
+;     diffFilter = delta --color-only
 
 ; seperate name && email for work and life
 ; ref: https://stackoverflow.com/questions/34597186/use-a-different-user-email-and-user-name-for-git-config-based-upon-remote-clone

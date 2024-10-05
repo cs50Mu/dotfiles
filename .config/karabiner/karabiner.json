@@ -272,6 +272,7 @@
                                 "to": [
                                     {
                                         "shell_command": "open -a Chromium"
+                                        //"shell_command": "open -a 'google chrome'"
                                     }
                                 ],
                                 "type": "basic"

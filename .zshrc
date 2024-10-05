@@ -49,7 +49,7 @@ ZSH_THEME="robbyrussell"
 # Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git autojump zsh-autosuggestions)
+plugins=(git zsh-autosuggestions)
 
 # User configuration
 
@@ -163,7 +163,6 @@ alias ll=' ls -lh'
 alias pwd=' pwd'
 # ProxyChains-ng alias
 alias pc="proxychains4"
-alias gcc='/usr/local/bin/gcc-8'
 alias config='/usr/bin/git --git-dir=/Users/linuxfish/.cfg/ --work-tree=/Users/linuxfish'
 
 # pyenv
